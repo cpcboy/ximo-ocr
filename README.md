@@ -114,7 +114,7 @@ Mac 安装包也不内置 LibreOffice；Office 转换须在本机已安装可发
 
 1.3.0 已合并源码并生成 Mac/Windows 候选安装包。2026-10-22 已按用户授权公开 [v1.3.0-rc.1 候选预览版](https://github.com/cpcboy/ximo-ocr/releases/tag/v1.3.0-rc.1)，标为 Pre-release、非 Latest。公开分发没有自动更新本机 App，也不代表全量模型 OCR 或 Windows 实机验收通过。
 
-用户随后单独确认备份旧版后在本机安装候选试用，保留全部扫描和模型数据。本次计划从合并 main 重建本机 App，保留真实来源和严格部署校验，不替换公开安装包；执行状态及回滚见 [LOCAL_PREVIEW_UPDATE.md](LOCAL_PREVIEW_UPDATE.md)。这不是正式版验收或其他用户的自动更新。
+用户随后单独确认备份旧版后在本机安装候选试用。首次安装来源 `c30850d3` 的 1.3.0 (6)，扫描/模型哈希未变，文件选择、完整 ZIP 保存及退出成功；但独立复核发现深色阅读器“白底浅字”，已回退旧版，不能登记更新验收完成。用户已追加授权只修复这一配色问题、走 PR/CI/合并后再更新和原生复验，见 [LOCAL_PREVIEW_UPDATE.md](LOCAL_PREVIEW_UPDATE.md)。公开安装包尚未替换，也包含该已知显示问题；这不是全量 OCR/正式版验收或自动更新。
 
 下载前先读 [候选发行说明](RELEASE_CANDIDATE_v1.3.0-rc.1.md)：Mac 仅适用 Apple Silicon/macOS 14+，Windows 图片 OCR 需要 NVIDIA GPU；两包不带模型。Mac 未 Developer ID 公证、Windows 未商业签名及目标杀毒验收，不要关闭防护。来源 SHA、安装包哈希、真实界面证据及未验收项见 [CANDIDATE_DELIVERY.md](CANDIDATE_DELIVERY.md)。
 

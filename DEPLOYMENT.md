@@ -42,7 +42,9 @@
 
 ## 本次本机候选试用（第 9 项追加授权）
 
-详细记录见 `LOCAL_PREVIEW_UPDATE.md`。仅重建本机 App，不修改应用代码，也不覆盖已公开安装包。部署器保持原样，不新增跳过来源、签名或漂移检查的参数。
+详细记录见 `LOCAL_PREVIEW_UPDATE.md`。2026-10-22 首次从 PR #6 合并源 `c30850d34dc36411923360645f241c976634d082` 安装本机 1.3.0 (6)，但深色阅读视觉验收失败，已恢复 1.2.2。用户另按维护规则第 10 项授权最小配色修复，再走 review/PR/CI/合并和原生复验；未授权覆盖已公开安装包。部署器保持原样，不新增跳过来源、签名或漂移检查的参数。
+
+**以下编号步骤是第 9 项首次尝试的历史记录，勿原样再次执行，特别是已存在的 `install/` 目录。** 第 10 项再次部署允许已 review 的 `app/globals.css` 配色和 `tests/reader-theme.test.mjs` 回归测试差异；expected-current 改用 `rollback-reader-contrast/installed-manifest.json`，backup-dir 改用全新 `install-reader-fix/`，均位于下述耐久备份根。等待 PR/main CI 成功，从该修复的合并 main 构建，构建前保留首次候选；其他签名、停服、清单、隔离验收门禁保持不变。完整参数与执行状态以 `LOCAL_PREVIEW_UPDATE.md` 末尾为准，不可把修复包标成原公开候选的相同二进制。
 
 1. 授权与执行方案先经文档 PR、独立 review、CI、合并；从 clean main 构建，并核对 `2db71b41864cdc3ec3222279f4cf07f2a875e459..HEAD` 只包含文档差异。否则停止重新 review。
 2. 核对当前 App 与维护开始清单一致；只读检查磁盘全部 `data/jobs/*/job.json`，不可只看最多 500 条的接口列表。只接受 completed/partial/failed/canceled 终态；任何其他状态、不可读取元数据或 ID 与目录名不一致都阻断更新，不能擅自取消、修复或删除。
@@ -111,7 +113,7 @@ Mac 为 ad-hoc 签名，尚无 Developer ID 公证；Windows 也未做商业代�
 
 上述 `/绝对路径/...` 是需填入实际维护记录的参数，不是可原样运行的路径。回退目录必须尚不存在，与 Applications 同一文件系统，且不在构建清理目录内。部署器检查当前 App 与维护开始清单完全一致、候选签名、Git 来源与复制哈希后原子替换；备份内生成 `previous.app`、`deployment.json`、`installed-manifest.json`。遇到漂移立即停止，不覆盖。
 
-本次维护开始的准确清单和旧版位于本机忽略的 `.maintenance-backups/2026-10-21-model-download/`。这些是本机回退材料，不提交 Git/Release。首次基线为 1.2.2 build 5；没有执行 install 前，生产仍是该版本。
+本次维护开始的准确清单和旧版位于本机忽略的 `.maintenance-backups/2026-10-21-model-download/`。这些是本机回退材料，不提交 Git/Release。首次基线为 1.2.2 build 5；第 9 项本机试用曾执行 install，但因视觉失败已 rollback 回该旧版。耐久回退根为 `~/Library/Application Support/墨析 OCR 工作台/maintenance-backups/2026-10-22-local-preview/`：`install/previous.app` 是原安装，`rollback-reader-contrast/previous.app` 保留失败候选；再次部署使用 `rollback-reader-contrast/installed-manifest.json` 核对当前旧版，在新的 `install-reader-fix/` 留审计。修复 App 的来源须为其真实合并 main，不能继续声称相对公开候选仅文档变化；公开资产不改。精确证据见 `LOCAL_PREVIEW_UPDATE.md`，不进行业务数据回滚或迁移。
 
 ## 真实验收和 GitHub Release
 
