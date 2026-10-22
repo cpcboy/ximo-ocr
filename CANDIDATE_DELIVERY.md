@@ -1,6 +1,8 @@
 # 1.3.0 候选交接：只合并与制包，未发布生产
 
-验收日期：2026-10-21 至 2026-10-22（America/Los_Angeles）。本次严格按用户最后确认的阶段范围执行：源码经 PR 合并、生成候选安装包；全量模型 OCR 和 Windows 目标机验收通过前，不创建正式 GitHub Release、不更新 `/Applications`。
+验收日期：2026-10-21 至 2026-10-22（America/Los_Angeles）。以下主体记录首次阶段交付：源码经 PR 合并、生成候选安装包，未创建正式 GitHub Release、未更新 `/Applications`。全量模型 OCR 和 Windows 目标机仍未验收。
+
+2026-10-22 后续授权：用户明确要求“先发布候选预览版”，允许仅将下列原包作为 `v1.3.0-rc.1` 的 GitHub Pre-release 分发，不设 Latest、不更新本机。流程和限制见 [DEPLOYMENT.md](DEPLOYMENT.md) 与 [候选发行说明](RELEASE_CANDIDATE_v1.3.0-rc.1.md)；实际公开与下载回读结果待执行后补录。
 
 ## 源码与候选文件
 
