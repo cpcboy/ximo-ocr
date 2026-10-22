@@ -14,6 +14,8 @@ import mlx.nn as nn
 import numpy as np
 from PIL import Image, ImageOps
 
+from .mlx_performance import release_inference_cache
+
 from .repetition import (
     analyze_repetitive_tail,
     find_exact_token_loop,
@@ -379,6 +381,11 @@ def _patch_model_module(model_module: ModuleType) -> None:
                 next_token = mx.argmax(logits, axis=-1, keepdims=True)
 
             token_id = int(next_token.item())
+            # This token is complete. Retain KV and the chosen token, but not
+            # obsolete logits or a growing pool of unused visual/KV buffers.
+            # No weights, values, model settings or compute kernels change.
+            del output, logits
+            release_inference_cache()
             chunks.append(next_token)
             output_history.append(token_id)
             current = next_token
