@@ -109,3 +109,7 @@ Mac 安装包也不内置 LibreOffice；Office 转换须在本机已安装可发
 
 测试：`.venv/bin/python -m pytest -q`、`npm run lint`、`npm test`。安装依赖使用 `npm ci` 和项目隔离 Python 环境。
 构建、来源校验、部署及回滚见 [DEPLOYMENT.md](DEPLOYMENT.md)，本次变化见 [CHANGELOG.md](CHANGELOG.md)。
+
+## 本次候选交接
+
+1.3.0 已合并源码并生成 Mac/Windows 候选安装包，尚未正式发布或更新本机生产 App。来源 SHA、安装包哈希、真实界面证据及未验收项见 [CANDIDATE_DELIVERY.md](CANDIDATE_DELIVERY.md)；不要将候选构建视为全量模型 OCR 或 Windows 实机验收。
