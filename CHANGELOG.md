@@ -1,5 +1,12 @@
 # 变更记录
 
+## 2026-10-22 — 本机候选试用更新（已授权，待执行）
+
+- 用户单独确认先备份 1.2.2，再在本机安装候选并验证；扫描、结果、笔记和模型不迁移、不重扫。
+- 不放宽部署器的 clean main / SOURCE_COMMIT / 签名 / 漂移门禁；文档 PR 合并后重建本机 App，代码与公开候选相同但如实记录新来源，不冒充相同二进制。
+- 原生合成 TXT 导入、阅读、完整 ZIP 导出在隔离数据目录验证；正常目录只核对历史数量与文件保全。完整模型 OCR、Windows 实机和正式发布仍待验收。
+- 具体步骤、备份与回退见 [LOCAL_PREVIEW_UPDATE.md](LOCAL_PREVIEW_UPDATE.md) 和 [DEPLOYMENT.md](DEPLOYMENT.md)。实际部署与验证未执行前不登记成功。
+
 ## 1.3.0-rc.1 — 2026-10-22 候选预览分发
 
 - 用户追加授权 GitHub Pre-release，非 Latest；不更新本机 App、不操作远端 Windows。
