@@ -2,6 +2,8 @@
 
 日期：2026-10-21 至 2026-10-22。结论：**本次按用户确认交付 PR 合并及候选包，正式发布延期**。本记录刻意区分代码 review、候选构建、真实界面操作和全量模型 OCR；不能互相替代。生产更新必须在后续全量验收通过后进行。最终来源、安装包哈希与合并后实测见 [CANDIDATE_DELIVERY.md](CANDIDATE_DELIVERY.md)。用户于 2026-10-22 追加授权候选 Pre-release 分发，不改变本记录的未验收结论；见 [候选发行说明](RELEASE_CANDIDATE_v1.3.0-rc.1.md)。
 
+**后续状态说明：** 本文下列 1.2.2、未安装/未发布描述保留为首次验证阶段事实。之后已公开候选预览版并按第 9 项授权试装本机 1.3.0 (6)，数据保全/导出通过，但深色阅读视觉失败，已回退；用户第 10 项授权修复后重新更新，见 [LOCAL_PREVIEW_UPDATE.md](LOCAL_PREVIEW_UPDATE.md)。不将试装计为整个更新、全量模型、Windows 或正式版验收；既有原生 sandbox 诊断仍待复查。
+
 ## 范围与隔离
 
 - Apple Silicon Mac 上构建、运行 `build/macos/墨析 OCR 工作台.app`，使用独立临时 support 目录，并设置 `OCR_STUDIO_DISABLE_LEGACY_MODEL=1`，没有读取用户扫描任务。

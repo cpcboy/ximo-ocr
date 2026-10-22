@@ -3176,6 +3176,17 @@ a {
 }
 
 .moxi-reader-paper {
+  /* The shared result renderer must follow the reader, not the workspace theme. */
+  --surface: var(--reader-surface);
+  --surface-2: var(--reader-paper);
+  --surface-3: var(--reader-surface-soft);
+  --ink: var(--reader-ink);
+  --ink-soft: var(--reader-ink);
+  --muted: var(--reader-muted);
+  --line: var(--reader-line);
+  --line-strong: var(--reader-line);
+  --accent: var(--reader-accent);
+  --accent-soft: var(--reader-accent-soft);
   color: var(--reader-ink);
   font-family: Georgia, "Songti SC", "STSong", "Times New Roman", serif;
   font-size: var(--moxi-reader-font-size);
