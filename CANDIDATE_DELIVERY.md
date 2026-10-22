@@ -2,7 +2,19 @@
 
 验收日期：2026-10-21 至 2026-10-22（America/Los_Angeles）。以下主体记录首次阶段交付：源码经 PR 合并、生成候选安装包，未创建正式 GitHub Release、未更新 `/Applications`。全量模型 OCR 和 Windows 目标机仍未验收。
 
-2026-10-22 后续授权：用户明确要求“先发布候选预览版”，允许仅将下列原包作为 `v1.3.0-rc.1` 的 GitHub Pre-release 分发，不设 Latest、不更新本机。流程和限制见 [DEPLOYMENT.md](DEPLOYMENT.md) 与 [候选发行说明](RELEASE_CANDIDATE_v1.3.0-rc.1.md)；实际公开与下载回读结果待执行后补录。
+2026-10-22 后续授权：用户明确要求“先发布候选预览版”，允许仅将下列原包作为 `v1.3.0-rc.1` 的 GitHub Pre-release 分发，不设 Latest、不更新本机。流程和限制见 [DEPLOYMENT.md](DEPLOYMENT.md) 与 [候选发行说明](RELEASE_CANDIDATE_v1.3.0-rc.1.md)；已公开的结果见下一节，未把浏览器拦截或全量 OCR 记为通过。
+
+## 候选公开记录（2026-10-22）
+
+- 发行页：[v1.3.0-rc.1](https://github.com/cpcboy/ximo-ocr/releases/tag/v1.3.0-rc.1)，公开时间 **2026-10-22 05:38:54 America/Los_Angeles**（12:38:54 UTC）。Release ID `420695117`，`draft=false`、`prerelease=true`、`isLatest=false`。远端 tag 实际解析为 `2db71b41864cdc3ec3222279f4cf07f2a875e459`。
+- 本次只更新七份发布/验收文档；应用代码、两包二进制及来源均未变化。发布授权/流程提交 `70d46600fd1e7848ff2494cbf78e080d5eb598ae` 经 [PR #4](https://github.com/cpcboy/ximo-ocr/pull/4) 合并为 `a1f4f5bf1930bd8a405e0f40faf7c757448b7f4c`；[PR CI 39777809620](https://github.com/cpcboy/ximo-ocr/actions/runs/39777809620)、[main CI 39778610665](https://github.com/cpcboy/ximo-ocr/actions/runs/39778610665) Linux/Windows 全成功。本机另复跑 57 Python、lint、diff 检查通过。
+- 发布前独立 review 发现 1 项 P2：已有 tag 时 `--target` 不足以证明来源。已补齐公开前递归解析 tag 到实际 commit、不符即停与公开后回读，发布前复核 P0/P1/P2=0。公开后新增 1 项 P2 浏览器分发验收缺口仍未解决；候选已公开，不代表六步完整验收完成。
+- 仅上传两包及两个 `.sha256`，先草稿校验再公开；四项 GitHub 服务端摘要、大小均与本机匹配。公开后匿名下载四文件，HTTP 均为 200，完整文件 SHA-256 和大小再次逐一相同。页面 Assets 显示 6 项是因为 GitHub 另自动提供源码 ZIP/tar.gz，并非多上传了其他文件。
+- **真实浏览器结论：** Chrome 页面显示 Pre-release、固定源、限制说明及两平台下载入口；实际点击 Mac `.sha256` 下载成功且内容哈希一致。Mac DMG 的浏览器等待超时，未确认完整浏览器下载；随后 Windows EXE 点击被当前 Chrome 以 `ERR_BLOCKED_BY_CLIENT` 拦截。未绕过、未关闭防护、未执行安装器；原因未确认，不定性为误报，也不宣称浏览器/杀毒/Windows 安装通过。独立匿名文件回读在 Windows 浏览器拦截前已启动，只用于文件完整性证据，不作为绕过拦截的安装路径。
+- 生产 `/Applications` 的 1.2.2 build 5 共 3736 项文件/链接在发布前后均与维护开始清单完全一致；没有替换/重启本机 App、操作远端 Windows 或改动扫描业务数据。
+- 原包与维护前备份仍保留。撤回按 `DEPLOYMENT.md`：标记候选撤回、保留 tag/资产；本机没有变更，无需 App 回滚。正式版门禁仍未满足。
+
+本轮本机证据在忽略的 `test-results/prerelease-20261022/`：`draft-asset-verification.json`、`published-verification.json`、`readback-verification.json`、`main-ci.json`、发布前后 `production-manifest-*.json` 和 `windows-chrome-blocked.png`。这些文件不进 Git/安装器；也不保存或公开临时签名下载 URL、浏览器内部记录及用户文件列表。公开说明的浏览器限制通过本次证据 PR 合并后同步，最终状态以发行页为准。
 
 ## 源码与候选文件
 
