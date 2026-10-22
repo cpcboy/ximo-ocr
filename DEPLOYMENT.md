@@ -4,6 +4,19 @@
 
 用户在 2026-10-22 先确认候选分发（维护规则第 8 项），随后另明确确认备份后在本机安装候选试用（第 9 项）。仅本机试用按下方新增小节执行；正式 Release 和 Windows 安装仍不执行，完整 OCR 等正式验收门禁不因试用而变成通过。
 
+## rc.2 新候选分发（第 11 项，当前流程）
+
+本次只重建/分发两平台候选，不替换已安装 App、不操作 Windows。以下 rc.1 和本机试用章节保留历史，不复用其 tag/SHA/资产名。
+
+1. 版本/文档经独立 review、PR、CI、合并；main CI completed/success 后核对 clean HEAD == origin/main。旧产物已在应用支持目录 `maintenance-backups/2026-10-22-rc2/prebuild/` 归档，核对回读哈希；不要覆盖 rc.1。
+2. 执行 `./mac-app/build-installer.sh`（会先构建网页）及 `./windows/build-installer.sh`；输出为 `MoxiOCR-macOS-arm64-1.3.0-rc.2.dmg` / `MoxiOCR-Windows-x64-1.3.0-rc.2-candidate.exe` 及同名 SHA-256。Mac 内版本 1.3.0(7)，Windows 数值 1.3.0.2；仅候选，不改签名或来源门禁。
+3. 核对两包实际 SOURCE_COMMIT 相同且等于此 main；只读挂载 DMG、严格签名、解包 EXE、检查前端阅读修复/许可与排除扫描/模型/日志/密钥。正常退出用户 App 必须先确认保存，隔离目录做原生阅读/导入/ZIP/退出，不能连接生产服务代替。
+4. 将真实源 SHA/资产哈希/签名与未验收边界补到基于已合并 `RELEASE_CANDIDATE_v1.3.0-rc.2.md` 的发行正文；未知同名远端 Release/tag 立即停止核对。tag 不存在时用 `gh release create v1.3.0-rc.2 <四个明确资产路径> --repo cpcboy/ximo-ocr --target <已核对包源完整SHA> --draft --prerelease --latest=false --notes-file <已复核正文>`。尖括号为必填实际值，不可照抄执行。
+5. 草稿四资产服务端 digest/size 逐一与本地核对。已有 tag 必须递归解析到实际包源，不只检查 targetCommitish。来源/状态/正文/文件完整后执行 `gh release edit v1.3.0-rc.2 --repo cpcboy/ximo-ocr --draft=false --prerelease --latest=false`；不使用 clobber，不移动旧 tag。
+6. 真实浏览器查看 Pre-release、限制说明、实际点击两平台安装器与校验文件；记录浏览器下载是否完成、拦截与截图，独立公开回读哈希。浏览器受阻不能记通过或绕过；候选实际状态经独立 review/证据 PR 回填 RC2_VALIDATION 与维护表。
+
+撤回条件及做法沿用下方候选流程：来源/哈希错误、误标正式/Latest、关键路径失败时停止公开或标记撤回，保留 tag/原包，再走修复 PR。未更换本机 App，无需本机回滚；扫描/模型不触碰。
+
 ## 发布门禁
 
 1. 主题分支改动 → 自查 diff → 独立对抗 review（P0/P1 清零，P2 逐条处理）→ 文档 → 提交 PR。

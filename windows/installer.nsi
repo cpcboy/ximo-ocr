@@ -13,7 +13,7 @@ Unicode True
 !endif
 
 !define PRODUCT_NAME "墨析 OCR 工作台"
-!define PRODUCT_VERSION "1.3.0"
+!define PRODUCT_VERSION "1.3.0-rc.2"
 !define PRODUCT_PUBLISHER "Moxi OCR Studio"
 !define PRODUCT_UNINST_KEY "Software\Microsoft\Windows\CurrentVersion\Uninstall\MoxiOCRStudio"
 
@@ -26,7 +26,7 @@ Icon "${ICON_FILE}"
 SetCompressor /SOLID lzma
 SetCompressorDictSize 64
 
-VIProductVersion "1.3.0.0"
+VIProductVersion "1.3.0.2"
 VIAddVersionKey /LANG=2052 "ProductName" "${PRODUCT_NAME}"
 VIAddVersionKey /LANG=2052 "FileDescription" "${PRODUCT_NAME} Windows 10 安装程序"
 VIAddVersionKey /LANG=2052 "CompanyName" "${PRODUCT_PUBLISHER}"
