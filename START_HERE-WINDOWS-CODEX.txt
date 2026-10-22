@@ -1,0 +1,18 @@
+给 Windows 电脑上的 Codex：
+
+请先完整阅读 AGENTS.md、MAINTENANCE_RULES.md、WINDOWS_CODEX_HANDOFF.md 和 DEPLOYMENT.md，再开始修改。
+唯一仓库：https://github.com/cpcboy/ximo-ocr 。每次改动先 PR，review/测试通过后合并，再发布。
+
+当前源码是 v1.3.0 candidate，不是已在目标机验证完成的最终版。
+首要任务是在真实 Windows 10 + Edge + 当前杀毒软件环境中：
+
+1. 复现或确认 127.0.0.1 拒绝连接问题；
+2. 验证网页心跳版启动器是否修复；
+3. 验证不再生成 PowerShell 停止快捷方式，也不再触发 LNK.Agent.b；
+4. 验证关闭窗口后 Node、Python、模型和 NVIDIA 显存都释放；
+5. 验证 Windows NVIDIA/PyTorch 模型下载、暂停、重开续传、完整校验和修复，完成真实图片/PDF OCR；
+6. 生成最终安装包、SHA-256 和 WINDOWS_TEST_REPORT.md。
+
+不要把模型打进安装包，不要通过关闭杀毒软件或添加排除项来假装修复成功。
+Mac 用 MLX，Windows 不支持 MLX；两平台模型不可混用。模型下载与 AI 环境建议预留至少 18 GB。
+墨析按 AGPL-3.0-only 开源；扫描数据只在本机，不提交 Git、不放入安装包。

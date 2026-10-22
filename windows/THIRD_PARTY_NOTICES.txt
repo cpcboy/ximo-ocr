@@ -1,0 +1,18 @@
+墨析 OCR 工作台 Windows 安装包
+
+本安装包内含下列运行组件，但不包含 OCR 模型权重：
+
+- Node.js 22 (OpenJS Foundation; Node.js license)
+  https://nodejs.org/
+- Python 3.12 embeddable runtime (Python Software Foundation License)
+  https://www.python.org/
+- uv (Astral; Apache-2.0 OR MIT；首次配置模型时下载)
+  https://github.com/astral-sh/uv
+- FastAPI, Uvicorn, PyMuPDF, Pillow 及其必要依赖
+  各组件许可证随其 dist-info 元数据一并安装。
+
+用户在程序内点击下载后，程序会从以下官方模型页下载模型文件：
+
+https://huggingface.co/baidu/Unlimited-OCR
+
+模型许可证：MIT。模型文件不包含在本安装包中。
