@@ -5,6 +5,7 @@ import path from "node:path";
 import test from "node:test";
 import { collectNotices } from "../scripts/collect_notices.mjs";
 import { createHash } from "node:crypto";
+import { execFileSync } from "node:child_process";
 
 test("bundled notices preserve ordinary, scoped and nested package licenses", () => {
   const root = mkdtempSync(path.join(os.tmpdir(), "moxi-notices-test-"));
@@ -62,5 +63,24 @@ test("runtime packages without license text fail until a pinned notice is suppli
     assert.throws(() => collectNotices(root, output), /许可内容校验失败/);
   } finally {
     rmSync(root, { recursive: true }); // Only this synthetic mkdtemp test directory.
+  }
+});
+
+test("Windows-style Git checkout preserves pinned license bytes", () => {
+  const root = mkdtempSync(path.join(os.tmpdir(), "moxi-license-checkout-"));
+  const git = (...args) => execFileSync("git", ["-C", root, ...args], { stdio: "pipe" });
+  try {
+    git("init");
+    const relative = "third-party/licenses/MIT-standard.txt";
+    const original = readFileSync(new URL(`../${relative}`, import.meta.url));
+    mkdirSync(path.join(root, "third-party/licenses"), { recursive: true });
+    writeFileSync(path.join(root, ".gitattributes"), readFileSync(new URL("../.gitattributes", import.meta.url)));
+    writeFileSync(path.join(root, relative), original);
+    git("add", ".gitattributes", relative);
+    const destination = `${path.join(root, "checkout").replaceAll("\\", "/")}/`;
+    git("-c", "core.autocrlf=true", "checkout-index", `--prefix=${destination}`, "--all");
+    assert.deepEqual(readFileSync(path.join(destination, relative)), original);
+  } finally {
+    rmSync(root, { recursive: true }); // Only this synthetic mkdtemp test repository.
   }
 });
