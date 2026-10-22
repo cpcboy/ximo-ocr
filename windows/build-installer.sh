@@ -12,7 +12,7 @@ python_version="3.12.10"
 node_version="22.23.2"
 python_zip="$cache_root/python-$python_version-embed-amd64.zip"
 node_zip="$cache_root/node-v$node_version-win-x64.zip"
-installer_file="$output_root/MoxiOCR-Windows-x64-1.3.0-candidate.exe"
+installer_file="$output_root/MoxiOCR-Windows-x64-1.3.0-rc.2-candidate.exe"
 source_commit="$(node "$project_dir/scripts/build_identity.mjs")"
 
 [[ ! -e "$installer_file" ]] || { echo "请先归档旧安装包：$installer_file" >&2; exit 1; }
