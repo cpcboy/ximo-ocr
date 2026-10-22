@@ -8,13 +8,13 @@ import pytest
 
 def test_generation_keeps_full_logits_and_quality_settings():
     source = Path(__file__).resolve().parents[1] / "backend/model_compat.py"
-    tree = ast.parse(source.read_text())
+    tree = ast.parse(source.read_text(encoding="utf-8"))
     generate = next(n for n in ast.walk(tree) if isinstance(n, ast.FunctionDef) and n.name == "generate")
     call = next(n for n in ast.walk(tree) if isinstance(n, ast.FunctionDef) and n.name == "multimodal_call")
     assert "last_logits_only" not in [arg.arg for arg in call.args.args]
-    assert "logits = self.lm_head(hidden_states)" in source.read_text()
-    assert "single_token_moe" not in source.read_text()
-    engine = source.with_name("engine.py").read_text()
+    assert "logits = self.lm_head(hidden_states)" in source.read_text(encoding="utf-8")
+    assert "single_token_moe" not in source.read_text(encoding="utf-8")
+    engine = source.with_name("engine.py").read_text(encoding="utf-8")
     for setting in ("temperature=0.0", "base_size=1024", "image_size=640 if precise else 1024", "crop_mode=precise"):
         assert setting in engine
     loop = next(n for n in ast.walk(generate) if isinstance(n, ast.For) and isinstance(n.target, ast.Name) and n.target.id == "step")
@@ -38,7 +38,7 @@ def test_release_only_clears_idle_cache(idle, expected):
     # Compile only this helper with a fake MLX so Windows CI exercises it.
     from types import SimpleNamespace
     path = Path(__file__).resolve().parents[1] / "backend/mlx_performance.py"
-    tree = ast.parse(path.read_text())
+    tree = ast.parse(path.read_text(encoding="utf-8"))
     helper = next(n for n in tree.body if isinstance(n, ast.FunctionDef))
     calls = []
     namespace = {"mx": SimpleNamespace(clear_cache=lambda: calls.append("clear"), get_cache_memory=lambda: idle), "IDLE_CACHE_BUDGET": 1024**3}
@@ -81,7 +81,7 @@ def test_first_token_eos_and_length_limit_preserve_output(sequence, max_length):
         assert axis == 1
         return Array([[token for chunk in chunks for token in chunk.rows[0]]])
 
-    source = (Path(__file__).resolve().parents[1] / "backend/model_compat.py").read_text()
+    source = (Path(__file__).resolve().parents[1] / "backend/model_compat.py").read_text(encoding="utf-8")
     clears = []
     namespace = {"Any": Any, "mx": SimpleNamespace(array=Array, argmax=lambda logits, **kw: Array([[logits.token]]), concatenate=concatenate),
                  "release_inference_cache": lambda: clears.append("check")}
