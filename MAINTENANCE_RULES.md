@@ -1,6 +1,6 @@
 # 墨析 OCR 工作台维护铁律
 
-状态：用户已确认下方十项项目口径。维护规范正式启用；仅完成文档不代表功能、安装包或实机验收完成。1.3.0 仍非正式版；2026-10-22 用户另明确授权备份后本机候选试用，并在深色阅读验收失败后授权最小修复再更新，严格限定为第 9/10 项，不扩大正式发布或 Windows 部署权限。
+状态：用户已确认下方十一项项目口径。维护规范正式启用；仅完成文档不代表功能、安装包或实机验收完成。2026-10-22 已按第11项公开 v1.3.0-rc.2 候选，非正式版、非 Latest；本机仍保留第9/10项部署的1.3.0(6)，本批次仅经用户确认正常退出后做隔离验收，不替换本机、不操作Windows。公开分发与未验收边界见 RC2_VALIDATION.md。
 
 ## 用户原文
 
@@ -90,7 +90,7 @@ Windows 的真实安装、杀毒软件扫描、首次下载、真实 OCR、退�
 | --- | --- | --- |
 | 网页 | `npm run build` | `dist/standalone/`。 |
 | Mac 应用 | `./mac-app/build-app.sh` | `build/macos/墨析 OCR 工作台.app`；须先构建网页。1.3.0 改为校验固定便携 Python/Node，运行时依赖内置；最低 macOS 14、Apple Silicon。不能以构建替代干净机器验收。 |
-| Mac DMG | `./mac-app/build-installer.sh` | 仅接受已合并到 `origin/main` 的干净源码；输出 `build/macos/output/MoxiOCR-macOS-arm64-1.3.0.dmg` 及 SHA-256。已从 PR #2 合并提交生成并只读挂载验证，见 CANDIDATE_DELIVERY.md；仍非生产发布。 |
+| Mac DMG | `./mac-app/build-installer.sh` | 仅接受已合并到 `origin/main` 的干净源码；当前输出 `build/macos/output/MoxiOCR-macOS-arm64-1.3.0-rc.2.dmg` 及 SHA-256。本批次已从 PR #9 合并源生成并原生隔离验证，见 RC2_VALIDATION.md；历史rc.1见CANDIDATE_DELIVERY.md，禁止覆盖旧包。 |
 | Windows 安装包（在 Mac 构建） | `./windows/build-installer.sh` | `build/windows/output/` 下 EXE 和 SHA-256；需已构建网页及 NSIS。 |
 | Windows 安装包（在 Windows PowerShell 构建） | `.\windows\build-installer.ps1` | 来源于已有 Windows 交接文档；完整构建和干净机器兼容性须本次复验。不自行修改或绕过执行策略。 |
 
@@ -119,6 +119,7 @@ Windows 的真实安装、杀毒软件扫描、首次下载、真实 OCR、退�
 - 阶段候选交接：`CANDIDATE_DELIVERY.md`，含实际源码 SHA、包哈希、验证证据、未完成项与生产状态。
 - 候选预览发行说明：`RELEASE_CANDIDATE_v1.3.0-rc.1.md`；仅供 GitHub Pre-release 分发，不替代完整验收。
 - 本机候选更新与数据保全记录：`LOCAL_PREVIEW_UPDATE.md`，区分更新计划、实际部署及验收结果。
+- 当前候选分发：`RELEASE_CANDIDATE_v1.3.0-rc.2.md`、`RC2_VALIDATION.md`；含实际来源、包哈希、原生/公开验证边界，不替代正式验收。
 
 ### 回滚方式
 
@@ -129,7 +130,7 @@ Windows 的真实安装、杀毒软件扫描、首次下载、真实 OCR、退�
 
 ### 用户已确认的项目口径（2026-10-21 至 2026-10-22）
 
-用户逐项确认以下十一项。这些是本项目范围内的明确授权，不扩大其他权限。开头状态段为第 10 项本机更新时的历史摘要；最新分发授权以下第 11 项为准。
+用户逐项确认以下十一项。这些是本项目范围内的明确授权，不扩大其他权限；最新分发授权以下第 11 项为准。
 
 1. **底线 C 的项目例外：** 墨析是离线桌面应用，继续在本机应用数据目录保存扫描原件、识别结果和阅读笔记；这些数据绝不提交 Git、上传到仓库或放入安装包。原有数据不迁移、不批量改动。模型保存在应用管理的本机模型目录，安装包不附带权重。
 2. **一次性空仓库初始化：** 允许仅向 main 写入一个不含文件的初始化提交，之后文档、代码及发布流程修改全部 PR → review/测试 → 合并 → 发布。
@@ -146,11 +147,15 @@ Windows 的真实安装、杀毒软件扫描、首次下载、真实 OCR、退�
 
 11. **rc.2 新候选分发（2026-10-22）：** 用户明确要求“把这次修复也打进 Mac 和 Windows 安装包，按之前的 PR、合并、验证流程发布一个新的候选预览版，先不发布正式版”。允许把 PR #7 修复和新版本标识经独立 review/文档/PR/CI/合并后，从 clean main 重建两平台，创建 `v1.3.0-rc.2` 的 draft + prerelease + latest=false，核对来源/包内容/签名/哈希后公开并真实浏览器验证。保留 rc.1 tag/资产，不覆盖历史；不替换现安装 App、不自动安装 Windows、不触发模型下载。候选范围仍不豁免完整 OCR、Windows、签名/浏览器安全验收，不绕过任何拦截。执行与回退见 DEPLOYMENT 新批次章节，证据见 RC2_VALIDATION.md。
 
+    用户随后明确回复“允许，已保存编辑，可正常退出后测试”，仅授权暂时释放本机端口、隔离验收后保留现安装版，不扩展为更新安装版或使用历史扫描做测试。
+
+    Chrome连接不可用后，用户明确选择“用内置浏览器继续验证”，可用内置浏览器检查发行页和下载；不绕过任何安全拦截、不扩大为Chrome/Windows兼容性结论。
+
 ## 变更执行记录
 
 | 日期 | 变更内容 | review 结论 | 文档更新 | commit | 部署 | 验证证据 | 回滚方式 |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| 2026-10-22 | 按第 11 项授权准备将阅读修复打入 rc.2 两平台新候选；旧批次保留 | 代码独立 review 新增 P0/P1/P2=0；后续文档/实包另审 | 本文件第 11 项/本行；README、CHANGELOG、DEPLOYMENT、Windows说明；新增 rc.2 发行与验收说明 | 本次发布 PR 待提交，不预写 SHA | 尚未发布；本机 App/数据不变 | 57 Python、lint、构建+11 Node；旧构建备份签名/包哈希回读通过，CI及新包待验 | 新候选异常停止公开/标撤回保留原包，源码 revert PR；不回滚业务数据 |
+| 2026-10-22 | 按第 11 项授权准备将阅读修复打入 rc.2 两平台新候选；旧批次保留 | 代码独立 review 新增 P0/P1/P2=0；后续文档/实包另审 | 本文件第 11 项/本行；README、CHANGELOG、DEPLOYMENT、Windows说明；新增 rc.2 发行与验收说明 | 准备 `31f9d7659964fb8c83b93976e5a5fc796f4a6cf6`；PR #9 合并 `3e9a7e2ea2bc33fd58cafd33520a1928599a28c3` | 本行为准备阶段历史，实际发布见表末新行；本机 App/数据不变 | 57 Python、lint、构建+11 Node；旧构建备份签名/包哈希回读通过，PR/main CI 后续成功 | 新候选异常停止公开/标撤回保留原包，源码 revert PR；不回滚业务数据 |
 | 2026-10-21 | 建立维护铁律与 AI 入口，用户已确认存储/初始化/平台/发布四项口径 | 已自查及独立对抗 review；P2 构建前备份时机已修复；四项确认记录复核通过；剩余 P0/P1/P2=0 | 本文件：用户原文、本项目信息、构建前备份、用户确认口径、执行记录；新增 AGENTS.md | `0f4828e831c124422c264932a296029deea91aa7`；PR #1 合并 `8feb90175a46810a834ddd41904fe6c3808b3354`；空初始化 `af9c418` | 仅文档已合并；应用未部署、未重启 | 只读核对源码命令、App 版本、模型卡及远端空仓库；diff 空白检查通过；未做功能验收 | revert PR；不修改应用与业务数据 |
 | 2026-10-21 | App 内分平台下载模型、便携运行时、来源拦截、安装器和 AGPL 开源说明 | 下载/打包及许可补充末轮独立 review P0/P1/P2=0；CI CRLF 与 NSIS 路径/编码修复均已独立复核 | README、CHANGELOG、DEPLOYMENT、MODEL_DOWNLOAD_VALIDATION、Windows 交接；本文件命令、确认第 5/6/7 项、执行记录 | 功能 `a76a7e9aa8b137ec217546430ac16ba17405c160`；PR #2；合并与构建记录后续文档 PR 回填 | 按最新授权仅交付候选；生产 1.2.2 未替换；未发布 Release | 57 Python、7 前端/来源/许可测试通过；PR 两轮 CI 暴露 CRLF/NSIS 问题，已修复待重跑；真实 Mac 下载/暂停/退出/续传、文本导入/阅读/完整 ZIP 导出通过；全量模型 OCR、Windows 实机未验收；系统诊断及边界见验收记录 | 保留旧 App/源码备份；未部署无需回滚；部署后的回滚按 DEPLOYMENT.md |
 | 2026-10-22 | 合并 PR #2、从合并源生成 Mac/Windows 候选、只读 DMG 复验并补齐交接 | 代码末轮及证据文档独立复核 P0/P1/P2=0 | 新增 CANDIDATE_DELIVERY；README、MODEL_DOWNLOAD_VALIDATION；本文件构建结果、文档路径与本行 | 候选源/PR #2 合并 `2db71b41864cdc3ec3222279f4cf07f2a875e459`；证据回填为后续文档 PR | 按用户第 7 项确认不部署；生产 1.2.2 build 5 未替换/未重启；无正式 Release | PR CI 39736384496、main CI 39736916274 全成功；DMG 签名/镜像、Windows 解包/来源、真实续传/阅读/完整 ZIP/退出通过；哈希和证据见 CANDIDATE_DELIVERY；全量 OCR、Windows 目标机与系统诊断待验 | 旧 App/清单/源码备份保留；本次无需生产回滚；源码仅 revert PR，未来 App-only rollback 见 DEPLOYMENT |
@@ -159,3 +164,4 @@ Windows 的真实安装、杀毒软件扫描、首次下载、真实 OCR、退�
 | 2026-10-22 | 首次本机候选安装，深色阅读视觉失败后已回退，未登记更新完成 | 预部署风险及审计正则已修正；独立证据复核 P0/P1=0，新增 P2=1 白底浅字；撤回阅读通过结论，其余数据/ZIP证据成立 | LOCAL_PREVIEW_UPDATE 实际执行/备份/失败证据；README、CHANGELOG、DEPLOYMENT；本文件部署状态/本行；两份历史验收文档补指针 | 首次 App 源 `c30850d34dc36411923360645f241c976634d082`；本次 PR 回填失败及回退事实 | 曾安装/重启候选，后按原入口恢复 `/Applications/墨析 OCR 工作台.app` 1.2.2；公开 Release 和 Windows 不变 | 57 Python、lint、7 前端及 PR/main CI 通过；文件框/ZIP/退出通过、阅读视觉失败；4任务、367业务文件、5旧模型文件哈希不变 | 已执行 rollback，审计与失败候选保留于 maintenance-backups/2026-10-22-local-preview/rollback-reader-contrast/；未回滚业务数据 |
 | 2026-10-22 | 按第 10 项授权最小修复阅读主题继承，准备重新更新 | 独立代码/文档末轮 review P0/P1/P2=0；两项文档 P2（历史参数/测试状态）已修正复核；提交前原视觉问题待实机复验 | 本文件第 10 项/部署状态/本行；LOCAL_PREVIEW_UPDATE、README、CHANGELOG、DEPLOYMENT、两份历史验收指针 | 修复 `ccf73d0e4adc14e02ed160dd4b1ef0025c4c78f7`；PR #7 合并 `b7d29292c18aa30fa00e4aef9f33ca57663100ad`；不改写原公开包来源 | 此准备阶段未部署；实际安装及验证见下一行 | 57 Python、lint、构建 + 10 Node（含3新增）通过；PR/main CI 均成功，原生结果见下一行 | 新安装失败按其 previous.app 和 installed-manifest.json 回退；不覆盖扫描和模型数据 |
 | 2026-10-22 | 合并配色修复后备份更新本机候选，回填真实验证 | 安装后独立证据复核新增 P0/P1/P2=0；原视觉 P2 经逐张截图复验仅在本机修复范围关闭，既有公开分发/OCR/Windows 缺口保留 | 本文件部署状态/本行；LOCAL_PREVIEW_UPDATE 最新实测、回退和证据；README/CHANGELOG/DEPLOYMENT 及两份验收指针 | 实际 App 源 `b7d29292c18aa30fa00e4aef9f33ca57663100ad`；本行证据另经文档 PR，不改包来源 | 已更新 `/Applications/墨析 OCR 工作台.app` 1.3.0(6)，隔离/正常重启验证后正常退出；未更换公开资产、未操作 Windows | 四主题/原始文本/文件框/合成导入/完整 ZIP/退出通过；367业务文件及5旧模型文件哈希不变；PR CI 39807735751/main CI 39809202219 成功；原生既有诊断未消除；临时合成目录可恢复清理 | 耐久备份 install-reader-fix/previous.app + installed-manifest.json，原 rollback 入口与新审计目录；只回退 App，不动数据 |
+| 2026-10-22 | 发布含阅读修复的 rc.2 双平台候选；记录新 DMG 原生及公开分发验收 | 代码/实包/原生证据/发行正文/公开分发/六文档独立复核；1项P2相对链接已修并复核关闭，末轮P0/P1/P2=0；正式验收边界保留 | 本文件状态/构建命令/文档路径/第11项退出及浏览器授权/本行；README、CHANGELOG、DEPLOYMENT、RC2_VALIDATION、rc.2发行说明 | 两包与tag源 `3e9a7e2ea2bc33fd58cafd33520a1928599a28c3`（PR #9）；本行证据另经文档PR，不改包源 | GitHub Pre-release已公开、非Latest；正常退出现有App后隔离启动/退出新DMG；未替换安装版、未安装Windows | PR CI39821165263/main CI39822054430成功；内置浏览器页面/四下载与独立公开回读通过、哈希相同；新DMG四主题/文件框/合成TXT/ZIP/退出通过，369业务/13managed模型/5legacy文件哈希不变；完整OCR/Windows仍未验 | 公开候选异常标撤回、保留tag/原包；现安装版不变无需App回滚；不改业务数据 |
