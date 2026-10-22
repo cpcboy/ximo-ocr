@@ -12,7 +12,7 @@
 
 ## 开始使用
 
-2026-10-22 新增 rc.2 发布任务：将已合并的阅读配色修复打入两平台候选，不发布正式版、不自动更新本机。最新分发状态见 [rc.2 验证记录](RC2_VALIDATION.md)，下载说明见 [rc.2 发行说明](RELEASE_CANDIDATE_v1.3.0-rc.2.md)。下文 rc.1 为历史批次，不代表 rc.2 状态。
+2026-10-22 已公开 [v1.3.0-rc.2 候选预览版](https://github.com/cpcboy/ximo-ocr/releases/tag/v1.3.0-rc.2)：阅读配色修复已打入 Mac/Windows 新安装包，非正式版、非 Latest，不自动更新本机。新 DMG 已完成原生隔离阅读/导入/ZIP/退出验证；Windows 实机与完整图片 OCR 仍未验收。最新分发验证边界见 [rc.2 验证记录](RC2_VALIDATION.md)，校验与限制见 [rc.2 发行说明](RELEASE_CANDIDATE_v1.3.0-rc.2.md)。下文 rc.1 为历史批次，不代表 rc.2 状态。
 
 1. macOS 请从“应用程序”打开“墨析 OCR 工作台”；开发环境也可双击
    `启动 OCR 工作台.command`。

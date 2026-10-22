@@ -8,6 +8,8 @@
 
 本次只重建/分发两平台候选，不替换已安装 App、不操作 Windows。以下 rc.1 和本机试用章节保留历史，不复用其 tag/SHA/资产名。
 
+2026-10-22 已按本流程公开 [v1.3.0-rc.2](https://github.com/cpcboy/ximo-ocr/releases/tag/v1.3.0-rc.2)，实际包源/tag `3e9a7e2ea2bc33fd58cafd33520a1928599a28c3`。下列命令是流程说明，不能再次创建或覆盖本批次资产；执行证据、未验范围及私有备份位置见 RC2_VALIDATION.md。用户已另确认正常退出当前 App 后隔离测试，不替换现安装版；实际已正常退出并完成新 DMG 原生路径。
+
 1. 版本/文档经独立 review、PR、CI、合并；main CI completed/success 后核对 clean HEAD == origin/main。旧产物已在应用支持目录 `maintenance-backups/2026-10-22-rc2/prebuild/` 归档，核对回读哈希；不要覆盖 rc.1。
 2. 执行 `./mac-app/build-installer.sh`（会先构建网页）及 `./windows/build-installer.sh`；输出为 `MoxiOCR-macOS-arm64-1.3.0-rc.2.dmg` / `MoxiOCR-Windows-x64-1.3.0-rc.2-candidate.exe` 及同名 SHA-256。Mac 内版本 1.3.0(7)，Windows 数值 1.3.0.2；仅候选，不改签名或来源门禁。
 3. 核对两包实际 SOURCE_COMMIT 相同且等于此 main；只读挂载 DMG、严格签名、解包 EXE、检查前端阅读修复/许可与排除扫描/模型/日志/密钥。正常退出用户 App 必须先确认保存，隔离目录做原生阅读/导入/ZIP/退出，不能连接生产服务代替。
@@ -96,7 +98,7 @@ Windows 原生 PowerShell：`./windows/build-installer.ps1`，需 Node 22、Pyth
 输出：
 
 - `build/macos/墨析 OCR 工作台.app`
-- `build/windows/output/MoxiOCR-Windows-x64-1.3.0-candidate.exe` 及 `.sha256`
+- `build/windows/output/MoxiOCR-Windows-x64-1.3.0-rc.2-candidate.exe` 及 `.sha256`（当前候选，已存在的文件禁止覆盖）
 
 前端内 `BUILD_SOURCE.json` 包含 Git SHA、dirty 状态和源码摘要；打包脚本前后检查一致。`SOURCE_COMMIT` 以 `UNCOMMITTED-` 开头的候选不允许部署或公开当正式版本。
 
@@ -109,7 +111,7 @@ node scripts/build_identity.mjs --require-release
 ./mac-app/build-installer.sh
 ```
 
-DMG 入口再次检查 clean + `origin/main`，重建前端、打包、临时签名、验证 DMG，输出 `build/macos/output/MoxiOCR-macOS-arm64-1.3.0.dmg` 及 `.sha256`。
+DMG 入口再次检查 clean + `origin/main`，重建前端、打包、临时签名、验证 DMG，当前输出 `build/macos/output/MoxiOCR-macOS-arm64-1.3.0-rc.2.dmg` 及 `.sha256`（本批次已生成，勿重复覆盖）。旧 rc.1 文件名仅用于历史记录。
 Mac 为 ad-hoc 签名，尚无 Developer ID 公证；Windows 也未做商业代码签名。不得宣称已通过 Gatekeeper、SmartScreen 或目标杀毒软件验收，不建议关闭防护或添加排除。
 
 ## 更新本机 Mac（仅 App，不动扫描数据）
