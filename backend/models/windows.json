@@ -1,0 +1,91 @@
+{
+  "id": "baidu/Unlimited-OCR",
+  "revision": "07dea832e22aefee32ad281d4b80551282e1c168",
+  "weights": "model-00001-of-000001.safetensors",
+  "files": [
+    {
+      "path": "LICENSE",
+      "size": 1061,
+      "algorithm": "git-sha1",
+      "digest": "890d455ae73d1d930eee703ce1e5478783ec9154"
+    },
+    {
+      "path": "README.md",
+      "size": 11108,
+      "algorithm": "git-sha1",
+      "digest": "9a9880ab7dac523e66ff68ca9acc2e1235fab662"
+    },
+    {
+      "path": "config.json",
+      "size": 2881,
+      "algorithm": "git-sha1",
+      "digest": "51871434df16d1a04dbf190565e1a4e0d5f48037"
+    },
+    {
+      "path": "configuration_deepseek_v2.py",
+      "size": 10720,
+      "algorithm": "git-sha1",
+      "digest": "1c28cf39e8b821ec2623d3762f08ffd77050e8f8"
+    },
+    {
+      "path": "conversation.py",
+      "size": 9253,
+      "algorithm": "git-sha1",
+      "digest": "65c295e81cd804080ec238b31d1922f33e1f9405"
+    },
+    {
+      "path": "deepencoder.py",
+      "size": 38008,
+      "algorithm": "git-sha1",
+      "digest": "de1687dfec3a4a8a00980a8444baba0082ce779b"
+    },
+    {
+      "path": "model-00001-of-000001.safetensors",
+      "size": 6672547120,
+      "algorithm": "sha256",
+      "digest": "2bc48a7a110061ea58fff65d3169367eebe3aee371ca6968dc2219c1b2855fc6"
+    },
+    {
+      "path": "model.safetensors.index.json",
+      "size": 257611,
+      "algorithm": "git-sha1",
+      "digest": "927d176a228105e796dd2193e33351bef791adcf"
+    },
+    {
+      "path": "modeling_deepseekv2.py",
+      "size": 90162,
+      "algorithm": "git-sha1",
+      "digest": "17d5c358a6010e71fa1f3cc2040cd3e5508ccd1b"
+    },
+    {
+      "path": "modeling_unlimitedocr.py",
+      "size": 53431,
+      "algorithm": "git-sha1",
+      "digest": "c329779827aa29c4b37d97c5510416aa3a9fde18"
+    },
+    {
+      "path": "processor_config.json",
+      "size": 466,
+      "algorithm": "git-sha1",
+      "digest": "6b3c4e7b325d9ec404182a3b0585a988cc883d1f"
+    },
+    {
+      "path": "special_tokens_map.json",
+      "size": 801,
+      "algorithm": "git-sha1",
+      "digest": "d59d312be868edc63b195e19e256c730dba685ad"
+    },
+    {
+      "path": "tokenizer.json",
+      "size": 9979544,
+      "algorithm": "git-sha1",
+      "digest": "c93a1c4d2ecf31bb5a9ec39eb73dfbf915aaf77e"
+    },
+    {
+      "path": "tokenizer_config.json",
+      "size": 165938,
+      "algorithm": "git-sha1",
+      "digest": "ba9d4175d69cde58ad9f68a76a4758df091eaffa"
+    }
+  ]
+}

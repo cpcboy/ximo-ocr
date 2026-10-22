@@ -1,0 +1,79 @@
+{
+  "id": "LoJexLLM/Unlimited-OCR-MLX",
+  "revision": "267d7adcbcd3730fdffb1eefd70ef6f486fbfc92",
+  "weights": "model.safetensors",
+  "files": [
+    {
+      "path": "README.md",
+      "size": 7572,
+      "algorithm": "git-sha1",
+      "digest": "3601324a7c2f1246c125a0d8127ae0b47b0684d8"
+    },
+    {
+      "path": "__init__.py",
+      "size": 229,
+      "algorithm": "git-sha1",
+      "digest": "410a1d11074e97fb899285f269f0ad7626895f58"
+    },
+    {
+      "path": "config.json",
+      "size": 1405,
+      "algorithm": "git-sha1",
+      "digest": "62332f8154a085ae7c0ef2165693e2e59554e62c"
+    },
+    {
+      "path": "config.py",
+      "size": 4555,
+      "algorithm": "git-sha1",
+      "digest": "16ee95dab81576a93590e44b00ea647c20d7aabb"
+    },
+    {
+      "path": "image_processing.py",
+      "size": 6917,
+      "algorithm": "git-sha1",
+      "digest": "f0708a80f306dae3c153bda6eea3aaf77c834ed9"
+    },
+    {
+      "path": "inference.py",
+      "size": 10727,
+      "algorithm": "git-sha1",
+      "digest": "ecb5820402cafd42a1b33c677639e959bc505673"
+    },
+    {
+      "path": "loader.py",
+      "size": 2685,
+      "algorithm": "git-sha1",
+      "digest": "fa17d3617492721699f93805c2e1541f303e772e"
+    },
+    {
+      "path": "model.py",
+      "size": 41188,
+      "algorithm": "git-sha1",
+      "digest": "70c84f1076de671a8c9b1bfea51689a3f379d39a"
+    },
+    {
+      "path": "model.safetensors",
+      "size": 6672561320,
+      "algorithm": "sha256",
+      "digest": "7aefa71cd2105262598bc40a2c4edab34f8b8670a8db623ed82ca5e1b0f21a08"
+    },
+    {
+      "path": "special_tokens_map.json",
+      "size": 801,
+      "algorithm": "git-sha1",
+      "digest": "d59d312be868edc63b195e19e256c730dba685ad"
+    },
+    {
+      "path": "tokenizer.json",
+      "size": 9979544,
+      "algorithm": "git-sha1",
+      "digest": "c93a1c4d2ecf31bb5a9ec39eb73dfbf915aaf77e"
+    },
+    {
+      "path": "tokenizer_config.json",
+      "size": 165938,
+      "algorithm": "git-sha1",
+      "digest": "ba9d4175d69cde58ad9f68a76a4758df091eaffa"
+    }
+  ]
+}

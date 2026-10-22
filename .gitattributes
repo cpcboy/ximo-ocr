@@ -1,0 +1,2 @@
+# These pinned license texts are checked byte-for-byte on every platform.
+/third-party/licenses/*.txt text eol=lf

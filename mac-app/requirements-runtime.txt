@@ -1,0 +1,11 @@
+# Bundled inference libraries; no model weights and no system Python dependency.
+fastapi==0.136.1
+uvicorn==0.47.0
+pymupdf==1.28.0
+Pillow==12.1.1
+mlx==0.29.3
+mlx-metal==0.29.3
+transformers==4.57.1
+safetensors==0.7.0
+numpy==2.4.6
+certifi==2026.6.17

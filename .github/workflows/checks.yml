@@ -1,0 +1,41 @@
+name: Checks
+on:
+  pull_request:
+  push:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  test:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.23.2'
+          cache: npm
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install -r windows/requirements-bootstrap.txt pytest httpx
+      - run: python -m pytest -q
+      - run: npm ci
+      - run: npm run lint
+      - run: npm test
+      - name: Build Windows installer
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          choco install nsis --no-progress -y
+          python -m pytest -q tests/test_windows_packaging.py
+          if ($LASTEXITCODE -ne 0) { throw "NSIS packaging regression failed" }
+          ./windows/build-installer.ps1 -SkipFrontendBuild
+      - uses: actions/upload-artifact@v4
+        if: runner.os == 'Windows'
+        with:
+          name: windows-candidate
+          path: build/windows/output/
+          retention-days: 7

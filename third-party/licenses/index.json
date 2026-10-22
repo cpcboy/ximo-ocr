@@ -1,0 +1,48 @@
+{
+  "@resvg/resvg-wasm@2.4.0": {
+    "file": "resvg-wasm-2.4.0.txt",
+    "sha256": "1f256ecad192880510e84ad60474eab7589218784b9a50bc7ceee34c2b91f1d5",
+    "kind": "upstream-license",
+    "source": "https://github.com/yisibl/resvg-js/blob/30ac8d830d44802df7e967569c92edabbbcec017/LICENSE",
+    "source_code": "https://github.com/yisibl/resvg-js/tree/30ac8d830d44802df7e967569c92edabbbcec017",
+    "attribution": "Copyright (c) 2021-present, yisibl(一丝), as stated in the published package README."
+  },
+  "yoga-layout@3.2.1": {
+    "file": "yoga-layout-3.2.1.txt",
+    "sha256": "52412d7bc7ce4157ea628bbaacb8829e0a9cb3c58f57f99176126bc8cf2bfc85",
+    "kind": "upstream-license",
+    "source": "https://github.com/facebook/yoga/blob/042f5013152eb81c1552dec945b88f7b95ca350f/LICENSE",
+    "source_code": "https://github.com/facebook/yoga/tree/042f5013152eb81c1552dec945b88f7b95ca350f"
+  },
+  "@unpic/core@1.0.3": {
+    "file": "MIT-standard.txt",
+    "sha256": "b05785f9f18e6716bab63424b11454513b9943a222595b70411009202fc592b5",
+    "kind": "standard-text-for-declared-license",
+    "license": "MIT",
+    "source": "https://github.com/spdx/license-list-data/blob/v3.27.0/text/MIT.txt",
+    "declaration": "https://github.com/ascorbic/unpic-img/blob/35df62b9aa22cc9e6ede939eb443023cd9179f60/packages/core/package.json",
+    "source_code": "https://github.com/ascorbic/unpic-img/tree/35df62b9aa22cc9e6ede939eb443023cd9179f60",
+    "note": "The exact package declares MIT but has no package-specific license file. This is supplemental standard MIT text, not a claimed upstream LICENSE. Template copyright placeholders are not attribution; no year or holder is invented."
+  },
+  "unpic@4.2.2": {
+    "file": "MIT-standard.txt",
+    "sha256": "b05785f9f18e6716bab63424b11454513b9943a222595b70411009202fc592b5",
+    "kind": "standard-text-for-declared-license",
+    "license": "MIT",
+    "source": "https://github.com/spdx/license-list-data/blob/v3.27.0/text/MIT.txt",
+    "declaration": "https://github.com/ascorbic/unpic/blob/eefd6174338cc1377f8f238b84af94f48acd6da4/package.json",
+    "source_code": "https://github.com/ascorbic/unpic/tree/eefd6174338cc1377f8f238b84af94f48acd6da4",
+    "note": "The exact package declares MIT but does not ship full license text. This supplemental standard text is not an upstream LICENSE. Template copyright placeholders are not attribution; no year or holder is invented."
+  },
+  "css-box-shadow@1.0.0-3": {
+    "file": "MIT-standard.txt",
+    "sha256": "b05785f9f18e6716bab63424b11454513b9943a222595b70411009202fc592b5",
+    "kind": "standard-text-for-declared-license",
+    "license": "MIT",
+    "source": "https://github.com/spdx/license-list-data/blob/v3.27.0/text/MIT.txt",
+    "declaration": "https://github.com/jxnblk/css-box-shadow/blob/6fc6c3716752879fa683f7925dbc51cf2c7930ee/package.json",
+    "source_code": "https://github.com/jxnblk/css-box-shadow/tree/6fc6c3716752879fa683f7925dbc51cf2c7930ee",
+    "attribution": "Author: Brent Jackson (published package metadata).",
+    "note": "Package metadata and README declare MIT but contain no full license. This supplemental standard text is not an upstream LICENSE. Template copyright placeholders are not attribution; no year or holder is invented."
+  }
+}
