@@ -2,8 +2,8 @@ Unicode True
 
 !include "MUI2.nsh"
 
-!ifndef STAGE_DIR
-  !error "STAGE_DIR is required"
+!ifndef STAGE_FILES
+  !error "STAGE_FILES is required (host-native absolute file pattern)"
 !endif
 !ifndef OUTPUT_FILE
   !error "OUTPUT_FILE is required"
@@ -31,7 +31,7 @@ VIAddVersionKey /LANG=2052 "ProductName" "${PRODUCT_NAME}"
 VIAddVersionKey /LANG=2052 "FileDescription" "${PRODUCT_NAME} Windows 10 安装程序"
 VIAddVersionKey /LANG=2052 "CompanyName" "${PRODUCT_PUBLISHER}"
 VIAddVersionKey /LANG=2052 "FileVersion" "${PRODUCT_VERSION}"
-VIAddVersionKey /LANG=2052 "LegalCopyright" "MIT licensed components; model downloaded separately."
+VIAddVersionKey /LANG=2052 "LegalCopyright" "AGPL-3.0-only; third-party licenses included; model downloaded separately."
 
 !define MUI_ABORTWARNING
 !define MUI_ICON "${ICON_FILE}"
@@ -52,7 +52,7 @@ VIAddVersionKey /LANG=2052 "LegalCopyright" "MIT licensed components; model down
 
 Section "主程序" SEC_MAIN
   SetOutPath "$INSTDIR"
-  File /r "${STAGE_DIR}/*.*"
+  File /r "${STAGE_FILES}"
   File "/oname=Windows安装说明.txt" "${__FILEDIR__}\Windows安装说明.txt"
   Delete "$INSTDIR\launch.ps1"
   Delete "$INSTDIR\stop.ps1"

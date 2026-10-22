@@ -186,13 +186,15 @@ if ($finalSourceCommit -ne $sourceCommit) { throw "打包期间源码改变，�
 $sourceCommit | Set-Content (Join-Path $stageRoot "SOURCE_COMMIT") -Encoding ascii
 $launcherFile = Join-Path $stageRoot "MoxiOCRStudio.exe"
 & $makeNsis `
+    "/INPUTCHARSET" "UTF8" `
     "/DOUTPUT_FILE=$launcherFile" `
     "/DICON_FILE=$iconFile" `
     (Join-Path $PSScriptRoot "launcher.nsi")
 Assert-LastExitCode "编译应用启动器"
 
 & $makeNsis `
-    "/DSTAGE_DIR=$stageRoot" `
+    "/INPUTCHARSET" "UTF8" `
+    "/DSTAGE_FILES=$(Join-Path $stageRoot '*')" `
     "/DOUTPUT_FILE=$installerFile" `
     "/DICON_FILE=$iconFile" `
     (Join-Path $PSScriptRoot "installer.nsi")

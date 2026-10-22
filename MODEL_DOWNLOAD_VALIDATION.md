@@ -22,17 +22,18 @@
 | P2 | 打包可能引用旧前端或未提交源码 | 源码摘要、dirty 标记、前后双校验、发布 clean/main 门禁；合成测试通过。 |
 | P2 | 历史验证文档包含真实任务标识与备份信息 | 原文留本机备份；公开文档脱敏，不提交扫描资料。 |
 | P2 | 五个实际前端运行依赖没有顶层许可文件，被收集器静默跳过 | 增加固定来源/哈希补充及实际运行依赖缺项阻断；缺项、补充、篡改测试通过；独立联网核对原文与模板，复核清零。 |
-| P2 | Windows Git 将固定许可文本换为 CRLF，首次 CI 哈希校验失败 | `.gitattributes` 仅对固定许可文本强制 LF；保留逐字节 SHA-256 校验，新增 Windows 风格检出测试。独立对照证明规则前后三文件的哈希差异，review 清零；Windows CI 须重跑。 |
+| P2 | Windows Git 将固定许可文本换为 CRLF，首次 CI 哈希校验失败 | `.gitattributes` 仅对固定许可文本强制 LF；保留逐字节 SHA-256 校验，新增 Windows 风格检出测试。独立对照证明规则前后三文件的哈希差异，review 清零；第二轮 Windows 前端构建及 7 项测试通过。 |
+| P2 | 第二轮 Windows 原生 NSIS 的混合路径分隔符导致 File 找不到文件，且输入编码为 ACP | 两平台分别传原生 `STAGE_FILES`，显式 UTF-8；新增两项真实 NSIS 编译测试。独立复核 P0/P1/P2=0；7-Zip 确认无扩展名、中文/空格文件和中文卸载器入包，Windows CI 继续重跑。 |
 
 末轮独立代码及许可补充复核结论：P0/P1/P2 = 0。独立收集 509 项依赖，五个原缺项均生成 LICENSE 与 SOURCE.json；实际运行依赖无许可材料缺项。这是工程 review，不是法律合规认证，也不是未完成平台的实机验收。
 
 ## 已执行检查
 
-- Python：55 项通过，包括下载、完整性、暂停/恢复、互斥、本机 API 拦截、读取状态、重复保护、Windows 启动器和部署器。PyMuPDF 有 5 条 SWIG 废弃警告，不是运行异常。
+- Python：57 项通过，包括下载、完整性、暂停/恢复、互斥、本机 API 拦截、读取状态、重复保护、Windows 启动器、两项 NSIS 真实编译和部署器。没有 NSIS 的首轮 CI 环境会跳过两项，Windows 安装 NSIS 后单独补跑。PyMuPDF 有 5 条 SWIG 废弃警告，不是运行异常。
 - `npm run lint` 通过；`npm test` 最终 7 项页面/来源/许可/Windows 检出测试通过。
 - `npx tsc --noEmit` **未通过**：遗留 Cloudflare 示例缺少 `cloudflare:workers`、`Fetcher`、`D1Database` 类型，不作为本次已通过项。未通过删除示例或放宽类型检查掩盖。
 - Mac 候选 App 构建成功（约 539 MB），`codesign --verify --deep --strict` 通过；这是 ad-hoc 签名，不是 Developer ID 公证，也不是干净 macOS 14 实机验收。
-- 首次 Windows 交叉构建 EXE 成功（52,710,268 字节），旧候选已归档；后续修复/许可变更后必须重新构建。PR #2 首轮 CI（run 39734583701）Linux 成功，Windows Python/lint 通过但前端构建因 CRLF 许可哈希失败；修复经独立 review 后补交同一 PR，等待重跑。不隐藏失败记录，目标 Windows 10/NVIDIA 仍未验收。
+- 首次 Windows 交叉构建 EXE 成功（52,710,268 字节），旧候选已归档；后续修复/许可变更后必须重新构建。PR #2 首轮 CI（run 39734583701）Linux 成功，Windows Python/lint 通过但前端构建因 CRLF 许可哈希失败；第二轮（run 39735172608）Windows Python/lint/7 项前端测试均通过，原生 NSIS 编译因混合路径失败。已分别修复、独立 review 后补交同一 PR，继续重跑。不隐藏失败记录，目标 Windows 10/NVIDIA 仍未验收。
 - 打包目录扫描未发现模型权重、扫描任务、运行日志；最终新包仍需重复检查。
 
 ## 真实 Mac 用户路径

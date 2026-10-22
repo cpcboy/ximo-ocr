@@ -100,12 +100,14 @@ fi
 [[ "$(node "$project_dir/scripts/build_identity.mjs")" == "$source_commit" ]] || { echo "打包期间源码改变，停止生成安装包。" >&2; exit 1; }
 
 /opt/homebrew/bin/makensis \
+  -INPUTCHARSET UTF8 \
   -DOUTPUT_FILE="$stage_root/MoxiOCRStudio.exe" \
   -DICON_FILE="$icon_file" \
   "$project_dir/windows/launcher.nsi"
 
 /opt/homebrew/bin/makensis \
-  -DSTAGE_DIR="$stage_root" \
+  -INPUTCHARSET UTF8 \
+  -DSTAGE_FILES="$stage_root/*" \
   -DOUTPUT_FILE="$installer_file" \
   -DICON_FILE="$icon_file" \
   "$project_dir/windows/installer.nsi"

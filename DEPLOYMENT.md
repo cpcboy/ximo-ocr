@@ -36,6 +36,8 @@ Mac 需要 Apple Silicon、Xcode/Command Line Tools、Node/npm；Windows 交叉�
 
 Windows 原生 PowerShell：`./windows/build-installer.ps1`，需 Node 22、Python 3.12 x64、NSIS 3.x；不绕过执行策略。`-SkipFrontendBuild` 仅接受与当前源码摘要一致的前端。
 
+两平台入口各自生成原生 `STAGE_FILES` 通配路径，显式指定 NSIS `INPUTCHARSET UTF8`，不要改回混合分隔符或系统默认编码。`tests/test_windows_packaging.py` 使用含空格/中文的合成目录真实编译启动器与安装器；Windows CI 在安装 NSIS 后强制补跑，失败不得上传候选包。
+
 输出：
 
 - `build/macos/墨析 OCR 工作台.app`
