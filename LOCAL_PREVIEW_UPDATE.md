@@ -1,6 +1,6 @@
 # 本机候选预览版更新记录
 
-日期：2026-10-22（America/Los_Angeles）。状态：首次安装 1.3.0 build 6 后，独立复核发现深色阅读对比度失败，已回退至 1.2.2；用户另授权修复后重新更新。不得把首次尝试登记为验收完成。后续修复仍须 PR/CI/合并及原生复验；不是正式版或全量模型 OCR 验收。
+日期：2026-10-22（America/Los_Angeles）。当前状态：按用户追加授权，阅读配色修复经 PR #7 / CI / 合并后，已备份更新本机至 **1.3.0 (6)，来源 `b7d29292c18aa30fa00e4aef9f33ca57663100ad`**。真实原生四主题、文件选择、合成文本导入、完整 ZIP 及正常退出复验通过，用户扫描与现存模型文件未变；最终独立证据 review 见末节。首次视觉失败及回退仍保留为历史，不改写为通过。仍是候选试用，不是正式版或全量模型 OCR 验收。
 
 ## 已确认范围
 
@@ -107,7 +107,7 @@
 
 首次只证实安装动作、数据保全和上述通过项，不证实整个更新完成。全量权重下载、真实图片/PDF OCR、加载后模型内存释放、Windows 目标机、公开浏览器大文件分发以及既有系统诊断仍未验收/解决；TXT 直接读取不计为 OCR。
 
-### 按追加授权修复并重新验收
+### 按追加授权修复并重新验收（操作方案及提交前记录）
 
 用户确认：“修复后再更新并验证”。先停止交付，已用原 `rollback` 入口、`install/previous.app` 和 `install/installed-manifest.json` 恢复旧版，审计留于全新的 `rollback-reader-contrast/`。回退后版本 1.2.2、签名有效，业务与模型清单仍完全相同；没有取消、重扫或改写历史任务。
 
@@ -118,3 +118,62 @@
 修复提交前本机回归：57 Python、lint、`npm test`（构建 + 10 项 Node 测试）通过；旧版 3736 项与回退清单一致，保留的失败候选 10420 项与其独立清单一致。视觉修复仍待合并后原生复验。
 
 修复代码及文档独立末轮 review P0/P1/P2=0。文档初轮两项 P2（历史部署参数可误复用、测试状态不一致）已修正并定点复核；review 代理也验证新增主题映射测试在原 CSS 上失败，能捕获该回归。原视觉缺陷仍标记为“代码修复、待实机复验”，不因 review 通过而提前关闭。
+
+## 修复后的实际安装与复验（2026-10-22）
+
+本节是最新状态；上节“待复验”描述保留为提交前事实。只修复 `app/globals.css` 的局部颜色继承、新增 `tests/reader-theme.test.mjs` 三项回归，并同步七份说明；不改部署器、权限、后端、工作台主题或用户存储。
+
+### 来源、CI 和备份
+
+- 修复提交 **`ccf73d0e4adc14e02ed160dd4b1ef0025c4c78f7`**，经 [PR #7](https://github.com/cpcboy/ximo-ocr/pull/7) 合并为 **`b7d29292c18aa30fa00e4aef9f33ca57663100ad`**。
+- [PR CI 39807735751](https://github.com/cpcboy/ximo-ocr/actions/runs/39807735751) / [main CI 39809202219](https://github.com/cpcboy/ximo-ocr/actions/runs/39809202219) 均 completed/success，包含 Linux、Windows；确认汇总成功后才安装。57 Python、lint、构建 + 10 Node 测试通过，不把遗留 `tsc --noEmit` 错误登记为通过。
+- 从 clean main 运行 `npm run build`、`./mac-app/build-app.sh`；暂存 App 原生四主题检查后正常退出，核对端口/进程停止，再运行已有 `install` 入口。当前 `/Applications/墨析 OCR 工作台.app` 来源与上述 main 一致，原生“关于”显示 1.3.0 (6)。后续证据文档提交不改写 App 内来源，也不为文档提交再次打包。
+- 沿用耐久根 `~/Library/Application Support/墨析 OCR 工作台/maintenance-backups/2026-10-22-local-preview/`；替换前保存 `independent-reader-fix.json`，以 `rollback-reader-contrast/installed-manifest.json` 核对当前旧版，在全新 `install-reader-fix/` 审计目录安装，退出码 0。此目录现已存在，**不得复用再次 install**。
+- `install-reader-fix/previous.app` 为实际旧安装 1.2.2，3736 项与原始独立清单完全相同；当前 App 10420 项与替换前独立候选清单完全相同。两者严格签名均通过，验证结束后再核对仍相同；初次及失败候选备份均保留，不覆盖原始维护基线。
+
+修复候选独立清单 SHA-256：`70838cc2bab654d45cea8d1ca959621c2f4c9bcac8645f389746b7ce11a92a4a`。
+新部署审计 SHA-256：`231ce7767a73010d9f64e34f0b3563c1b2381d6854512a4408830b76e347df91`。
+
+### 真实操作、数据及日志
+
+实测运行实际安装的 App，不以暂存构建替代。隔离 support 只含合成任务，设置 `OCR_STUDIO_DISABLE_LEGACY_MODEL=1` 并清除继承的模型路径；每次切换实例均核对端口、PID、进程命令、工作目录及日志路径。没有下载或加载模型，没有打开历史阅读器、编辑/导出历史任务或改变共享工作台主题。
+
+| 真实路径 | 结果 / 本机证据文件 |
+| --- | --- |
+| 系统文件框 | 打开 → 取消 → 再打开 → 选择 735 字节合成 TXT，新任务 1 页完成；导入不经接口代替点击。 |
+| 四种阅读主题 | `fix-installed-system.png`（系统当前深色）、`fix-installed-light.png`、`fix-installed-sepia.png`、`fix-installed-dark.png`；实际查看正文、标题、表格标题/表头、行内代码、代码块与引用，可读且无原白底浅字。只改变合成任务主题。 |
+| 原始内容切换 | `fix-installed-raw.png`：原始 HTML 文本在深色下可读，再切回阅读版、返回工作台成功。 |
+| 完整 ZIP | `fix-native-save-dialog.png` / `fix-after-export.png`：原生保存框成功，页面未被导航替换；4 条目 CRC 通过，源文件字节完全一致，TXT/MD/JSON 均含测试标记，JSON 为 1 页。 |
+| 版本 | `fix-installed-about.png`：1.3.0 (6)；包内来源另经文件清单确认，不只依赖版本号。 |
+| 正常目录启动 | 首页仍为 4 条历史任务，系统状态有 Apple Silicon / MLX 固定源与下载按钮；未点击下载、未打开历史任务。摘要 `fix-normal-ui-summary.json` 不含历史文件名。 |
+| 本机来源边界 | 正常 Origin 200，外部 / null Origin 与伪造 Host 403；`fix-origin-guard.json`。未放宽权限或 CORS。 |
+| 退出与日志 | 隔离、正常实例均经原生菜单正常退出，相关 App/前后端进程消失、3000/18765 拒绝连接；两份后端日志均有 Application shutdown complete。最终 App 保持退出，不留服务。 |
+
+新合成 ZIP：3066 字节，SHA-256 **`0b412203f132ab2200cc0f4d1e4641bdba9c05422fb98f9451501a4c9d3c3acf`**。
+
+安装前、安装后、隔离测试后、正常实例最终退出后，都与同一稳定清单比较：原 4 任务（3 completed、1 既有 failed）、367 个业务文件共 619490861 字节、旧模型 5 文件共 92889 字节完全不变；应用 `models/` 仍不存在。不把现有少量模型文件描述为完整权重，不声称扫描数据已另行备份。数据原地保全，备份仅针对 App。
+
+前后端日志未检出 ERROR、Traceback、Exception 或 HTTP 5xx；本轮隔离原生 stderr 仍有一次既有 `sandbox_extension_issue_file failed for : 2 (No such file or directory)`，未查明根因，未宣称修复。中途暂存实例的文件框“前往文件夹”自动化未成功，正常退出重开后采用可见文件列表选取完成；不把这一自动化障碍冒充已修复的 App 缺陷。
+
+机器检查摘要为 `test-results/local-preview-20261022/fix-final-verification.json`；它记录哈希/端口/日志，不替代截图视觉判断。上述 8 张安装版截图、日志、摘要、合成输入和 ZIP 等 19 份最小证据逐字节归档到耐久根 **`evidence-reader-fix/`**。所有证据仅留本机，不进入 Git、安装包或 Release。
+
+独立复核后，3 个本次自建的合成验证 support 临时目录已移到本机废纸篓，可恢复；没有永久删除扫描数据、模型或备份。清理审计 `fix-cleanup.json` 另归档（证据现共 20 份），清理后业务/模型清单再次相同。上文 ZIP 等校验的临时原路径不再作为交付位置，耐久证据副本为准。
+
+### 最终 review、范围与回退
+
+安装后独立证据 review **新增 P0/P1/P2=0**。reviewer 逐张查看全部 8 张原生截图，独立复核 App/回退文件清单、严格签名、包内 clean 来源、CI 与安装时序、ZIP 内容/哈希、原业务和模型清单、正常实例无历史阅读/导出请求、服务退出和日志；原“白底浅字”P2 **仅在本机修复版范围关闭**。未把先前代码 review 的零问题当作实机证据结论。
+
+本次七份证据回填文档再经独立对抗 review，新增 P0/P1/P2=0；20 份耐久证据与清理记录一致。提交前复跑 57 Python、lint、3 项阅读主题测试、22 处本地 Markdown 链接及 diff 检查通过；此证据 PR 的 CI 另行执行，不预设通过。
+
+公开 `v1.3.0-rc.1` 的四项资产大小/服务端哈希重新回读仍与原值一致，未替换 DMG/EXE，也未发布正式版或操作 Windows。公开原包仍包含已知阅读显示问题；本机修复与公开包必须明确区分。全量模型首次下载、真实图片/PDF OCR、载入模型后内存释放、Windows 与公开浏览器下载缺口仍未验收。
+
+需要回退时先正常退出并确认端口关闭，核对旧 App 签名及清单，再在项目根运行下列已有入口；备份目录必须尚不存在，存在则停止选择新的审计目录，不能覆盖：
+
+```sh
+.venv/bin/python scripts/deploy_macos.py rollback \
+  "$HOME/Library/Application Support/墨析 OCR 工作台/maintenance-backups/2026-10-22-local-preview/install-reader-fix/previous.app" \
+  --expected-current "$HOME/Library/Application Support/墨析 OCR 工作台/maintenance-backups/2026-10-22-local-preview/install-reader-fix/installed-manifest.json" \
+  --backup-dir "$HOME/Library/Application Support/墨析 OCR 工作台/maintenance-backups/2026-10-22-local-preview/rollback-reader-fix-20261022"
+```
+
+此命令仅恢复 App，不动扫描、笔记或模型。回退会回到 1.2.2，其原有深色显示缺陷也会返回；不能用回退来声称解决该显示问题。源码撤回仍须 revert PR，不直接推 main。
