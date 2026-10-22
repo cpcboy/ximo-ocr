@@ -2,7 +2,7 @@
 
 唯一仓库：https://github.com/cpcboy/ximo-ocr 。先读 `MAINTENANCE_RULES.md`；以下入口已落入源码，具体某次是否执行通过以变更执行记录和验收记录为准，不以文档命令代替验收。
 
-用户已确认本次先交付已合并源码与候选包。下文 install / 正式 Release 步骤本次不执行；等待全量模型 OCR 等正式验收完成再进入生产发布。
+用户在 2026-10-22 追加确认仅发布候选预览版，见 `MAINTENANCE_RULES.md` 第 8 项。下文 install / 正式 Release 步骤仍不执行；等待全量模型 OCR 等正式验收完成再进入生产发布。候选公开只执行下一节，不放宽生产门禁。
 
 ## 发布门禁
 
@@ -11,6 +11,34 @@
 3. 构建前保存需要保留的旧 `.app`、EXE、DMG 及哈希，备份必须在 `build/` 外。脚本会重建 stage / `.app`，但不删除已存在的同名发行安装包，须先归档。
 4. 核对没有扫描文件、OCR JSON、模型权重、日志、凭据进入 Git 或安装包。用隔离数据完成用户路径；候选构建不等同于生产。
 5. Mac 全量模型首次下载及 OCR 未验证，或任何已知失败未解决时，停止生产部署。Windows 未在目标机器验收时只允许明确标记 candidate。
+
+## 本次候选预览版分发（不部署本机）
+
+用户明确授权分发已经验收到候选范围的原包。本次不改应用代码、不重新打包；`v1.3.0-rc.1` 必须指向两包的实际来源 `2db71b41864cdc3ec3222279f4cf07f2a875e459`，该提交已通过 PR #2 合并和 main CI。之后的文档提交不改写包内来源，不将它们标成新构建。此安排只适用于本次原包候选分发；未来正式版仍须从最新已合并 clean main 构建及完整验收。
+
+1. 核对工作区无无关改动、上述源已合并、后续提交只有文档；核对候选 SHA-256 与 `CANDIDATE_DELIVERY.md` 完全一致。已有包及旧版 App 备份原位保留，不覆盖。若有任何差异，停止并重新 review。
+2. 将此次授权、发行说明及流程通过独立 review、PR、CI 后合并。确认远端尚无同名 tag / Release；若存在，读取其状态恢复本次流程，禁止覆盖同名资产或移动 tag。已有 lightweight/annotated tag 必须递归解析到最终 commit，并确认等于 `2db71b41864cdc3ec3222279f4cf07f2a875e459`，不符立即停止；`--target` 只影响新 tag 自动创建，不能证明已有 tag 的来源。
+3. 从已合并文档创建 **draft + prerelease + latest=false**，只上传指定的两个安装器和各自 `.sha256`：
+
+   ```sh
+   gh release create v1.3.0-rc.1 \
+     build/macos/output/MoxiOCR-macOS-arm64-1.3.0.dmg \
+     build/macos/output/MoxiOCR-macOS-arm64-1.3.0.dmg.sha256 \
+     build/windows/output/MoxiOCR-Windows-x64-1.3.0-candidate.exe \
+     build/windows/output/MoxiOCR-Windows-x64-1.3.0-candidate.exe.sha256 \
+     --repo cpcboy/ximo-ocr --target 2db71b41864cdc3ec3222279f4cf07f2a875e459 \
+     --draft --prerelease --latest=false \
+     --title '墨析 1.3.0-rc.1 · 候选预览版（未完成全量验收）' \
+     --notes-file RELEASE_CANDIDATE_v1.3.0-rc.1.md
+   ```
+
+4. 核对草稿只有四个指定资产、大小及 GitHub 服务端 SHA-256 与本机相同，包源及 target 正确，说明无敏感信息。公开前再次检查远端 tag：存在则按第 2 步解析并核对最终 commit；尚不存在则确认草稿固定 target 且没有冲突 tag，公开后仍须回读验证。若上传超时，先读取草稿和资产状态；只补缺失资产，不盲目重复建 Release、不使用 `--clobber`。
+5. 完整校验后用 `gh release edit v1.3.0-rc.1 --repo cpcboy/ximo-ocr --draft=false --prerelease --latest=false` 公开。复核 `prerelease=true`、`draft=false`、非 Latest、tag 解析到上述源。
+6. 在真实浏览器打开发行页，检查 Pre-release 标识、限制说明、Mac/Windows 下载入口并实际点击下载；下载回读与四个资产清单的 SHA-256/大小逐一核对。保存截图及校验结果到忽略的验证目录，最终证据经后续文档 PR 回填。下载失败不能登记为验证通过。
+
+本次无需停止正在运行的 1.2.2，也不触发模型下载；仅检查 App 文件清单未被此次分发改动。不会把扫描原件、结果、模型、日志、整个 build 或备份上传到 Release。
+
+撤回触发：资产来源/哈希不一致、误标正式版/Latest、错误的安装或验证宣传。草稿阶段停止公开；若已公开，先编辑标题和说明醒目标记“已撤回/请勿安装”，保持 Pre-release 与非 Latest，记录原因并通过 PR 修复后另发新 rc。保留旧 tag 和原包作审计，不改写历史、不覆盖资产；不可变发行若限制操作则报告并按其允许方式标注撤回，不绕过保护。本机未更换所以无需 App 回滚。
 
 ## 测试
 
