@@ -77,6 +77,8 @@ class JobStore:
         filename: str,
         content_type: str,
         options: dict[str, Any],
+        engine_id: str = "local",
+        engine_label: str = "本机 MLX",
     ) -> dict[str, Any]:
         with self._lock:
             job_id = uuid.uuid4().hex
@@ -89,6 +91,8 @@ class JobStore:
                 "filename": clean_name,
                 "source_file": source_file,
                 "content_type": content_type or "application/octet-stream",
+                "engine_id": engine_id,
+                "engine_label": engine_label,
                 "size": 0,
                 "status": "uploading",
                 "stage": "正在接收文件",
@@ -164,6 +168,8 @@ class JobStore:
                             "error",
                             "stats",
                             "warnings",
+                            "engine_id",
+                            "engine_label",
                         )
                     }
                 )

@@ -58,6 +58,13 @@ import {
   DocumentReader,
   type DocumentReaderState,
 } from "./document-reader";
+import { EngineSettings } from "./engine-settings";
+import {
+  AUTO_ENGINE_ID,
+  LOCAL_ENGINE_ID,
+  pickEngine,
+  type ScanEngine,
+} from "./engines";
 
 const API_BASE = "http://127.0.0.1:18765";
 const ACCEPTED_FILES =
@@ -130,6 +137,9 @@ type Health = {
   supported_extensions: string[];
   max_upload_bytes: number;
   queue_size: number;
+  running_jobs?: number;
+  max_parallel?: number;
+  engines?: ScanEngine[];
   lifecycle: {
     auto_unload: boolean;
     client_connected: boolean;
@@ -191,6 +201,8 @@ type JobSummary = {
   error: string | null;
   warnings: string[];
   stats: JobStats;
+  engine_id?: string;
+  engine_label?: string;
 };
 
 type Job = JobSummary & {
@@ -208,6 +220,8 @@ type OcrOptions = {
   max_length: number;
   language_hint: string;
   output_style: string;
+  /** 识别引擎：local、auto 或远程接口 id。 */
+  engine: string;
 };
 
 type Toast = {
@@ -224,6 +238,7 @@ const defaultOptions: OcrOptions = {
   max_length: 8192,
   language_hint: "auto",
   output_style: "structured",
+  engine: AUTO_ENGINE_ID,
 };
 
 const statusMeta: Record<
@@ -500,12 +515,14 @@ function UploadPanel({
   setOptions,
   onFiles,
   uploading,
+  engines,
   compact = false,
 }: {
   options: OcrOptions;
   setOptions: (next: OcrOptions) => void;
   onFiles: (files: File[]) => void;
   uploading: string | null;
+  engines: ScanEngine[];
   compact?: boolean;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
@@ -629,6 +646,28 @@ function UploadPanel({
             placeholder="全部，如 1-5,8"
           />
         </label>
+        <label className="field-inline engine-picker">
+          <span>识别引擎</span>
+          <select
+            value={options.engine}
+            onChange={(event) =>
+              setOptions({ ...options, engine: event.target.value })
+            }
+          >
+            <option value={AUTO_ENGINE_ID}>
+              并行自动分配（{engines.length} 个可用）
+            </option>
+            <option value={LOCAL_ENGINE_ID}>本机 MLX · 串行</option>
+            {engines
+              .filter((engine) => engine.kind === "remote")
+              .map((engine) => (
+                <option key={engine.id} value={engine.id}>
+                  {engine.label}
+                  {engine.enabled ? "" : "（已停用）"}
+                </option>
+              ))}
+          </select>
+        </label>
         <button
           type="button"
           className="advanced-toggle"
@@ -751,6 +790,8 @@ export default function Home() {
   const [dark, setDark] = useState(false);
   const textAreaRef = useRef<HTMLTextAreaElement>(null);
   const toastId = useRef(0);
+  const engineCursor = useRef(0);
+  const [engineRefresh, setEngineRefresh] = useState(0);
 
   const notify = useCallback(
     (message: string, kind: Toast["kind"] = "info") => {
@@ -817,6 +858,19 @@ export default function Home() {
       setBackendOnline(false);
     }
   }, [readerMode, selectedId]);
+
+  const localModelReady = Boolean(
+    health?.model_download.model_ready && health.model_download.runtime_ready,
+  );
+
+  const autoEngines = useMemo(() => {
+    const list = health?.engines ?? [];
+    return list.filter((engine) =>
+      engine.kind === "local" ? localModelReady : engine.enabled,
+    );
+  }, [health, localModelReady]);
+
+  const remoteEnabled = autoEngines.some((engine) => engine.kind === "remote");
 
   useEffect(() => {
     const run = () => void refresh();
@@ -905,9 +959,17 @@ export default function Home() {
       return;
     }
     setShowUpload(false);
+    const requested = options.engine || LOCAL_ENGINE_ID;
+    let cursor = engineCursor.current;
     for (let index = 0; index < files.length; index += 1) {
       const file = files[index];
       setUploading(`正在上传 ${index + 1}/${files.length} · ${file.name}`);
+      let engineId = requested;
+      if (requested === AUTO_ENGINE_ID) {
+        const picked = pickEngine(autoEngines, cursor);
+        engineId = picked.engineId;
+        cursor = picked.nextCursor;
+      }
       try {
         const job = await api<Job>("/api/jobs", {
           method: "POST",
@@ -916,17 +978,22 @@ export default function Home() {
             "X-File-Name": encodeURIComponent(file.name),
             "X-File-Type": file.type || "application/octet-stream",
             "X-OCR-Options": encodeURIComponent(JSON.stringify(options)),
+            "X-OCR-Engine": encodeURIComponent(engineId),
           },
           body: file,
         });
         resetReader();
         setSelectedId(job.id);
         setSelectedJob(job);
-        notify(`${file.name} 已加入识别队列`, "success");
+        notify(
+          `${file.name} 已加入识别队列 · ${job.engine_label || engineId}`,
+          "success",
+        );
       } catch (error) {
         notify(`${file.name}：${(error as Error).message}`, "error");
       }
     }
+    engineCursor.current = cursor;
     setUploading(null);
     refresh();
   };
@@ -1219,9 +1286,16 @@ export default function Home() {
             <span>{modelLabel}</span>
             {model?.size_gb ? <small>{model.size_gb} GB</small> : null}
           </button>
-          <div className="privacy-badge">
+          <div
+            className={`privacy-badge ${remoteEnabled ? "privacy-badge-remote" : ""}`}
+            title={
+              remoteEnabled
+                ? "已接入模型接口；选用远程接口时当前页图像会发送到该接口"
+                : "所有识别都在本机完成"
+            }
+          >
             <ShieldCheck size={15} />
-            文件仅在本机
+            {remoteEnabled ? "本机 + 模型接口" : "文件仅在本机"}
           </div>
           <button
             className="icon-button"
@@ -1342,6 +1416,11 @@ export default function Home() {
                         {meta.active && <LoaderCircle className="spin" size={11} />}
                         {meta.label}
                       </span>
+                      {job.engine_label && (
+                        <span className="engine-chip" title={job.engine_label}>
+                          {job.engine_label}
+                        </span>
+                      )}
                       <span>{formatDate(job.created_at)}</span>
                     </div>
                     {meta.active && (
@@ -1387,7 +1466,8 @@ export default function Home() {
                 </h1>
                 <p>
                   图片、扫描 PDF、Word、Excel、PPT
-                  或压缩包都可以批量投入。识别、预览、校对和导出全部在本机完成。
+                  或压缩包都可以批量投入。默认识别、预览、校对和导出都在本机完成；
+                  接入模型接口后可以让多份文档同时并行扫描。
                 </p>
               </div>
 
@@ -1396,6 +1476,7 @@ export default function Home() {
                 setOptions={setOptions}
                 onFiles={uploadFiles}
                 uploading={uploading}
+                engines={autoEngines}
               />
 
               <div className="feature-row">
@@ -1871,6 +1952,7 @@ export default function Home() {
               setOptions={setOptions}
               onFiles={uploadFiles}
               uploading={uploading}
+              engines={autoEngines}
               compact
             />
           </div>
@@ -2069,6 +2151,15 @@ export default function Home() {
                 )}
               </div>
             </div>
+
+            <EngineSettings
+              notify={notify}
+              onChanged={() => {
+                setEngineRefresh((value) => value + 1);
+                void refresh();
+              }}
+              refreshToken={engineRefresh}
+            />
 
             <div className="settings-section">
               <h3>文件转换能力</h3>

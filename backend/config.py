@@ -31,6 +31,10 @@ DATA_ROOT = Path(
     os.getenv("OCR_STUDIO_DATA_DIR", str(DEFAULT_DATA_ROOT))
 ).expanduser()
 JOBS_ROOT = DATA_ROOT / "jobs"
+# 模型接口配置（含本机密钥）只保存在数据目录，权限 0600，不进入 Git。
+MODEL_CONFIG_PATH = Path(
+    os.getenv("OCR_STUDIO_MODEL_CONFIG", str(DATA_ROOT / "config" / "models.json"))
+).expanduser()
 
 MODEL_DIR = Path(
     os.getenv(
