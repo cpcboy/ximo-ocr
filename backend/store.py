@@ -77,6 +77,8 @@ class JobStore:
         filename: str,
         content_type: str,
         options: dict[str, Any],
+        engine_id: str = "local",
+        engine_label: str = "本机 MLX",
     ) -> dict[str, Any]:
         with self._lock:
             job_id = uuid.uuid4().hex
@@ -89,6 +91,8 @@ class JobStore:
                 "filename": clean_name,
                 "source_file": source_file,
                 "content_type": content_type or "application/octet-stream",
+                "engine_id": engine_id,
+                "engine_label": engine_label,
                 "size": 0,
                 "status": "uploading",
                 "stage": "正在接收文件",
@@ -119,6 +123,19 @@ class JobStore:
             if job_id not in self._jobs:
                 raise KeyError(job_id)
             return copy.deepcopy(self._jobs[job_id])
+
+    def peek(self, job_id: str) -> dict[str, Any]:
+        """只取调度需要的少量字段，避免为每个排队任务深拷贝全部页面文本。"""
+        with self._lock:
+            self._validate_id(job_id)
+            job = self._jobs.get(job_id)
+            if job is None:
+                raise KeyError(job_id)
+            return {
+                "status": job.get("status"),
+                "engine_id": job.get("engine_id"),
+                "cancel_requested": bool(job.get("cancel_requested")),
+            }
 
     def mutate(
         self,
@@ -164,6 +181,8 @@ class JobStore:
                             "error",
                             "stats",
                             "warnings",
+                            "engine_id",
+                            "engine_label",
                         )
                     }
                 )

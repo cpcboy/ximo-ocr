@@ -58,6 +58,13 @@ import {
   DocumentReader,
   type DocumentReaderState,
 } from "./document-reader";
+import { EngineSettings } from "./engine-settings";
+import {
+  AUTO_ENGINE_ID,
+  LOCAL_ENGINE_ID,
+  pickEngine,
+  type ScanEngine,
+} from "./engines";
 
 const API_BASE = "http://127.0.0.1:18765";
 const ACCEPTED_FILES =
@@ -130,6 +137,9 @@ type Health = {
   supported_extensions: string[];
   max_upload_bytes: number;
   queue_size: number;
+  running_jobs?: number;
+  max_parallel?: number;
+  engines?: ScanEngine[];
   lifecycle: {
     auto_unload: boolean;
     client_connected: boolean;
@@ -160,6 +170,7 @@ type PageRecord = {
   elapsed_seconds: number;
   edited?: boolean;
   repetition_trimmed?: boolean;
+  truncated?: boolean;
   repetition_diagnostics?: Record<string, unknown> | null;
   reading_text?: string;
   reading_repair?: {
@@ -191,6 +202,8 @@ type JobSummary = {
   error: string | null;
   warnings: string[];
   stats: JobStats;
+  engine_id?: string;
+  engine_label?: string;
 };
 
 type Job = JobSummary & {
@@ -208,6 +221,8 @@ type OcrOptions = {
   max_length: number;
   language_hint: string;
   output_style: string;
+  /** 识别引擎：local、auto 或远程接口 id。 */
+  engine: string;
 };
 
 type Toast = {
@@ -224,6 +239,7 @@ const defaultOptions: OcrOptions = {
   max_length: 8192,
   language_hint: "auto",
   output_style: "structured",
+  engine: AUTO_ENGINE_ID,
 };
 
 const statusMeta: Record<
@@ -500,12 +516,14 @@ function UploadPanel({
   setOptions,
   onFiles,
   uploading,
+  engines,
   compact = false,
 }: {
   options: OcrOptions;
   setOptions: (next: OcrOptions) => void;
   onFiles: (files: File[]) => void;
   uploading: string | null;
+  engines: ScanEngine[];
   compact?: boolean;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
@@ -629,6 +647,28 @@ function UploadPanel({
             placeholder="全部，如 1-5,8"
           />
         </label>
+        <label className="field-inline engine-picker">
+          <span>识别引擎</span>
+          <select
+            value={options.engine}
+            onChange={(event) =>
+              setOptions({ ...options, engine: event.target.value })
+            }
+          >
+            <option value={AUTO_ENGINE_ID}>
+              并行自动分配（{engines.length} 个可用）
+            </option>
+            <option value={LOCAL_ENGINE_ID}>本机 MLX · 串行</option>
+            {engines
+              .filter((engine) => engine.kind === "remote")
+              .map((engine) => (
+                <option key={engine.id} value={engine.id}>
+                  {engine.label}
+                  {engine.enabled ? "" : "（已停用）"}
+                </option>
+              ))}
+          </select>
+        </label>
         <button
           type="button"
           className="advanced-toggle"
@@ -751,6 +791,8 @@ export default function Home() {
   const [dark, setDark] = useState(false);
   const textAreaRef = useRef<HTMLTextAreaElement>(null);
   const toastId = useRef(0);
+  const engineCursor = useRef(0);
+  const [engineRefresh, setEngineRefresh] = useState(0);
 
   const notify = useCallback(
     (message: string, kind: Toast["kind"] = "info") => {
@@ -817,6 +859,32 @@ export default function Home() {
       setBackendOnline(false);
     }
   }, [readerMode, selectedId]);
+
+  const localModelReady = Boolean(
+    health?.model_download.model_ready && health.model_download.runtime_ready,
+  );
+
+  const autoEngines = useMemo(() => {
+    const list = health?.engines ?? [];
+    return list.filter((engine) =>
+      engine.kind === "local" ? localModelReady : engine.enabled,
+    );
+  }, [health, localModelReady]);
+
+  const remoteEnabled = autoEngines.some((engine) => engine.kind === "remote");
+
+  // 选中的接口被删除/停用后，把本地保存的选择重置为自动分配，避免一直 422。
+  useEffect(() => {
+    const value = options.engine;
+    if (!value || value === AUTO_ENGINE_ID || value === LOCAL_ENGINE_ID) return;
+    const available = (health?.engines ?? []).some((engine) => engine.id === value);
+    if (available) return;
+    const timer = window.setTimeout(
+      () => setOptions({ ...options, engine: AUTO_ENGINE_ID }),
+      0,
+    );
+    return () => window.clearTimeout(timer);
+  }, [health, options, setOptions]);
 
   useEffect(() => {
     const run = () => void refresh();
@@ -905,9 +973,24 @@ export default function Home() {
       return;
     }
     setShowUpload(false);
+    const requested = options.engine || LOCAL_ENGINE_ID;
+    let cursor = engineCursor.current;
+    // 健康状态每 1.6 秒才刷新一次；批量上传时用本地计数避免同一批全压到一个引擎。
+    const assigned = new Map<string, number>();
     for (let index = 0; index < files.length; index += 1) {
       const file = files[index];
       setUploading(`正在上传 ${index + 1}/${files.length} · ${file.name}`);
+      let engineId = requested;
+      if (requested === AUTO_ENGINE_ID) {
+        const adjusted = autoEngines.map((engine) => ({
+          ...engine,
+          running: engine.running + (assigned.get(engine.id) || 0),
+        }));
+        const picked = pickEngine(adjusted, cursor);
+        engineId = picked.engineId;
+        cursor = picked.nextCursor;
+        assigned.set(engineId, (assigned.get(engineId) || 0) + 1);
+      }
       try {
         const job = await api<Job>("/api/jobs", {
           method: "POST",
@@ -916,17 +999,22 @@ export default function Home() {
             "X-File-Name": encodeURIComponent(file.name),
             "X-File-Type": file.type || "application/octet-stream",
             "X-OCR-Options": encodeURIComponent(JSON.stringify(options)),
+            "X-OCR-Engine": encodeURIComponent(engineId),
           },
           body: file,
         });
         resetReader();
         setSelectedId(job.id);
         setSelectedJob(job);
-        notify(`${file.name} 已加入识别队列`, "success");
+        notify(
+          `${file.name} 已加入识别队列 · ${job.engine_label || engineId}`,
+          "success",
+        );
       } catch (error) {
         notify(`${file.name}：${(error as Error).message}`, "error");
       }
     }
+    engineCursor.current = cursor;
     setUploading(null);
     refresh();
   };
@@ -1219,9 +1307,16 @@ export default function Home() {
             <span>{modelLabel}</span>
             {model?.size_gb ? <small>{model.size_gb} GB</small> : null}
           </button>
-          <div className="privacy-badge">
+          <div
+            className={`privacy-badge ${remoteEnabled ? "privacy-badge-remote" : ""}`}
+            title={
+              remoteEnabled
+                ? "已接入模型接口；选用远程接口时当前页图像会发送到该接口"
+                : "所有识别都在本机完成"
+            }
+          >
             <ShieldCheck size={15} />
-            文件仅在本机
+            {remoteEnabled ? "本机 + 模型接口" : "文件仅在本机"}
           </div>
           <button
             className="icon-button"
@@ -1342,6 +1437,11 @@ export default function Home() {
                         {meta.active && <LoaderCircle className="spin" size={11} />}
                         {meta.label}
                       </span>
+                      {job.engine_label && (
+                        <span className="engine-chip" title={job.engine_label}>
+                          {job.engine_label.split("·")[0].trim()}
+                        </span>
+                      )}
                       <span>{formatDate(job.created_at)}</span>
                     </div>
                     {meta.active && (
@@ -1387,7 +1487,8 @@ export default function Home() {
                 </h1>
                 <p>
                   图片、扫描 PDF、Word、Excel、PPT
-                  或压缩包都可以批量投入。识别、预览、校对和导出全部在本机完成。
+                  或压缩包都可以批量投入。默认识别、预览、校对和导出都在本机完成；
+                  接入模型接口后可以让多份文档同时并行扫描。
                 </p>
               </div>
 
@@ -1396,6 +1497,7 @@ export default function Home() {
                 setOptions={setOptions}
                 onFiles={uploadFiles}
                 uploading={uploading}
+                engines={autoEngines}
               />
 
               <div className="feature-row">
@@ -1411,8 +1513,12 @@ export default function Home() {
                 </div>
                 <div>
                   <span className="feature-icon"><ShieldCheck size={18} /></span>
-                  <strong>隐私留在本机</strong>
-                  <p>文件和识别结果不会发送到云端服务。</p>
+                  <strong>隐私默认留在本机</strong>
+                  <p>
+                    {remoteEnabled
+                      ? "只有选择远程接口时，当前页图像才会发送到该接口。"
+                      : "文件和识别结果不会发送到云端服务。"}
+                  </p>
                 </div>
               </div>
             </section>
@@ -1646,6 +1752,14 @@ export default function Home() {
                         {selectedPage?.edited && (
                           <span className="edited-badge">已校对</span>
                         )}
+                        {selectedPage?.truncated && (
+                          <span
+                            className="edited-badge truncated-badge"
+                            title="模型输出达到本次上限（受“最长输出”和接口最大输出共同限制），建议提高后重新扫描"
+                          >
+                            输出达上限
+                          </span>
+                        )}
                       </div>
                       <div className="result-actions">
                         <button
@@ -1871,6 +1985,7 @@ export default function Home() {
               setOptions={setOptions}
               onFiles={uploadFiles}
               uploading={uploading}
+              engines={autoEngines}
               compact
             />
           </div>
@@ -2069,6 +2184,15 @@ export default function Home() {
                 )}
               </div>
             </div>
+
+            <EngineSettings
+              notify={notify}
+              onChanged={() => {
+                setEngineRefresh((value) => value + 1);
+                void refresh();
+              }}
+              refreshToken={engineRefresh}
+            />
 
             <div className="settings-section">
               <h3>文件转换能力</h3>

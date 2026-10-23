@@ -5,12 +5,12 @@ import json
 import logging
 import math
 import os
-import queue
 import shutil
 import threading
 import time
 import urllib.parse
 import zipfile
+from collections.abc import Callable
 from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Any
@@ -22,13 +22,28 @@ from fastapi.responses import FileResponse, JSONResponse, Response
 from .config import (
     MAX_PAGES,
     MAX_UPLOAD_BYTES,
+    MODEL_CONFIG_PATH,
     MODEL_DIR,
     SUPPORTED_EXTENSIONS,
     ensure_data_dirs,
 )
+from .dispatcher import JobDispatcher
 from .documents import DocumentPreparer, converter_status
 from .engine import ModelEngine
 from .model_download import ModelDownloadManager
+from .model_registry import (
+    DEFAULT_ENDPOINT_CONCURRENCY,
+    GLOBAL_MAX_PARALLEL,
+    KEEP_KEY_SENTINEL,
+    LOCAL_ENGINE_ID,
+    LOCAL_ENGINE_LABEL,
+    LOCAL_MAX_CONCURRENCY,
+    EndpointValidationError,
+    ModelEndpointRegistry,
+    normalize_base_url,
+    public_endpoint,
+)
+from .remote_engine import RemoteEngine, RemoteEngineError, probe_models
 from .repetition import trim_repetitive_tail
 from .store import JobStore, safe_filename, utc_now
 
@@ -43,10 +58,17 @@ ensure_data_dirs()
 store = JobStore()
 engine = ModelEngine(MODEL_DIR)
 model_download = ModelDownloadManager(MODEL_DIR)
+registry = ModelEndpointRegistry(MODEL_CONFIG_PATH)
 model_operation_lock = threading.RLock()
-job_queue: queue.Queue[str | None] = queue.Queue()
-worker_stop = threading.Event()
-worker_thread: threading.Thread | None = None
+dispatcher = JobDispatcher(
+    resolve_engine=lambda job_id: _resolve_job_engine(job_id),
+    slots_for=lambda engine_id: _engine_slots(engine_id),
+    process=lambda job_id: _run_job(job_id),
+    max_parallel=GLOBAL_MAX_PARALLEL,
+    requeue_if=lambda job_id: _job_was_requeued(job_id),
+    # 槽位释放后再判断能否卸载，否则自己仍算“运行中”，模型永远不会自动释放。
+    on_finished=lambda job_id: _unload_model_if_idle("任务队列已全部完成"),
+)
 model_loader_thread: threading.Thread | None = None
 client_monitor_stop = threading.Event()
 client_monitor_thread: threading.Thread | None = None
@@ -83,8 +105,131 @@ def _client_is_connected() -> bool:
     )
 
 
+def _engine_slots(engine_id: str) -> int:
+    if engine_id == LOCAL_ENGINE_ID:
+        return LOCAL_MAX_CONCURRENCY
+    endpoint = registry.get(engine_id)
+    if endpoint is None:
+        return 1
+    return int(endpoint.get("max_concurrency") or DEFAULT_ENDPOINT_CONCURRENCY)
+
+
+def _resolve_job_engine(job_id: str) -> str | None:
+    """调度器取任务时确认它仍在排队；被取消或删除的任务直接丢弃。"""
+    try:
+        meta = store.peek(job_id)
+    except KeyError:
+        return None
+    if meta["status"] != "queued" or meta["cancel_requested"]:
+        return None
+    return str(meta.get("engine_id") or LOCAL_ENGINE_ID)
+
+
+def _job_was_requeued(job_id: str) -> bool:
+    """任务收尾窗口里被“重试”回队列时，调度器需要重新接手。"""
+    try:
+        meta = store.peek(job_id)
+    except KeyError:
+        return False
+    return meta["status"] == "queued" and not meta["cancel_requested"]
+
+
+def _job_cancel_requested(job_id: str) -> bool:
+    try:
+        return bool(store.peek(job_id)["cancel_requested"])
+    except KeyError:
+        return True
+
+
+def _local_jobs_active() -> bool:
+    """只有本机 MLX 的任务才影响内存释放与模型下载，远程任务不应挡住它们。"""
+    if dispatcher.running_by_engine().get(LOCAL_ENGINE_ID):
+        return True
+    return LOCAL_ENGINE_ID in dispatcher.pending_engines()
+
+
+def _engine_catalog() -> list[dict[str, Any]]:
+    running = dispatcher.running_by_engine()
+    local_status = engine.status()
+    catalog: list[dict[str, Any]] = [
+        {
+            "id": LOCAL_ENGINE_ID,
+            "label": LOCAL_ENGINE_LABEL,
+            "kind": "local",
+            "enabled": True,
+            "max_concurrency": LOCAL_MAX_CONCURRENCY,
+            "running": running.get(LOCAL_ENGINE_ID, 0),
+            "state": local_status.get("state"),
+            "detail": local_status.get("message"),
+            "model": local_status.get("path"),
+            "platform": local_status.get("platform"),
+            "api_key_set": True,
+        }
+    ]
+    for endpoint in registry.list():
+        enabled = bool(endpoint.get("enabled"))
+        catalog.append(
+            {
+                "id": endpoint["id"],
+                "label": endpoint["name"],
+                "kind": "remote",
+                "enabled": enabled,
+                "max_concurrency": int(endpoint["max_concurrency"]),
+                "running": running.get(endpoint["id"], 0),
+                "state": "ready" if enabled else "disabled",
+                "detail": f"{endpoint['model']} · {endpoint['base_url']}",
+                "model": endpoint["model"],
+                "base_url": endpoint["base_url"],
+                "api_key_set": bool(endpoint.get("api_key")),
+                "preset": bool(endpoint.get("preset")),
+            }
+        )
+    return catalog
+
+
+def _engine_label(engine_id: str) -> str:
+    if engine_id == LOCAL_ENGINE_ID:
+        return LOCAL_ENGINE_LABEL
+    endpoint = registry.get(engine_id)
+    return str(endpoint["name"]) if endpoint else engine_id
+
+
+def _scan_page_image(
+    engine_id: str,
+    image_path: Path,
+    options: dict[str, Any],
+    should_cancel: Callable[[], bool] | None = None,
+) -> tuple[str, dict[str, Any], str]:
+    """按任务绑定的引擎识别一页；返回文字、诊断和引擎标识。"""
+    if engine_id == LOCAL_ENGINE_ID:
+        download_status = model_download.status()
+        if not download_status.get("model_ready") or not download_status.get("runtime_ready"):
+            raise RuntimeError("请先在设置中完成模型下载与校验，再重试此任务")
+        text = engine.scan(
+            image_path,
+            prompt=options["prompt"],
+            mode=options["mode"],
+            max_length=options["max_length"],
+        )
+        return text, engine.last_scan_diagnostics(), engine_id
+
+    endpoint = registry.get(engine_id)
+    if endpoint is None:
+        raise RuntimeError("这个模型接口已被删除，请重新选择识别引擎后重试")
+    if not endpoint.get("enabled"):
+        raise RuntimeError("这个模型接口已停用，请启用后重试")
+    text, usage = RemoteEngine(endpoint).scan(
+        image_path,
+        prompt=options["prompt"],
+        max_length=options["max_length"],
+        mode=options["mode"],
+        should_cancel=should_cancel,
+    )
+    return text, {"usage": usage, "truncated": bool(usage.get("truncated"))}, engine_id
+
+
 def _unload_model_if_idle(reason: str) -> bool:
-    if engine.busy or job_queue.unfinished_tasks:
+    if engine.busy or _local_jobs_active():
         return False
     if not engine.status()["loaded"]:
         return False
@@ -415,25 +560,54 @@ def _process_job(job_id: str) -> None:
     if job.get("status") == "canceled":
         return
 
-    try:
-        store.update(
-            job_id,
-            status="preparing",
-            stage="正在拆分文件并生成页面预览",
-            progress=5,
-            started_at=utc_now(),
-            completed_at=None,
-            error=None,
-            cancel_requested=False,
-            pages=[],
-            warnings=[],
-            stats={
-                "total_pages": 0,
-                "completed_pages": 0,
-                "failed_pages": 0,
-                "elapsed_seconds": 0,
-            },
+    engine_id = str(job.get("engine_id") or LOCAL_ENGINE_ID)
+    engine_name = _engine_label(engine_id)
+
+    # 只有仍然是 queued 的任务才能进入 preparing；否则可能把用户刚提交的取消覆盖掉。
+    begin_state = {"ok": False}
+
+    def begin_run(data: dict[str, Any]) -> None:
+        if data.get("status") != "queued":
+            return
+        if data.get("cancel_requested"):
+            # 上传期间就被取消、但仍被写成 queued 的任务必须在这里收尾，否则会反复调度。
+            begin_state["ok"] = False
+            data.update(
+                {
+                    "status": "canceled",
+                    "stage": "任务已取消；没有开始识别",
+                    "progress": 0,
+                    "completed_at": utc_now(),
+                }
+            )
+            return
+        begin_state["ok"] = True
+        data.update(
+            {
+                "status": "preparing",
+                "stage": "正在拆分文件并生成页面预览",
+                "progress": 5,
+                "started_at": utc_now(),
+                "completed_at": None,
+                "error": None,
+                "engine_id": engine_id,
+                "engine_label": engine_name,
+                "pages": [],
+                "warnings": [],
+                "stats": {
+                    "total_pages": 0,
+                    "completed_pages": 0,
+                    "failed_pages": 0,
+                    "elapsed_seconds": 0,
+                },
+            }
         )
+
+    try:
+        store.mutate(job_id, begin_run)
+        if not begin_state["ok"]:
+            logger.info("Job %s no longer queued; skipping dispatch", job_id)
+            return
         job = store.get(job_id)
         options = _default_options(job.get("options"))
         pages_dir = store.job_dir(job_id) / "pages"
@@ -465,20 +639,41 @@ def _process_job(job_id: str) -> None:
                     "_extracted_text": page.extracted_text,
                 }
             )
-        store.update(
-            job_id,
-            status="running",
-            stage=f"准备完成，共 {len(page_records)} 页",
-            progress=12,
-            pages=page_records,
-            warnings=prepared.warnings,
-            stats={
-                "total_pages": len(page_records),
-                "completed_pages": 0,
-                "failed_pages": 0,
-                "elapsed_seconds": 0,
-            },
-        )
+        cancelled_while_preparing = {"value": False}
+
+        def mark_prepared(data: dict[str, Any]) -> None:
+            if data.get("cancel_requested"):
+                cancelled_while_preparing["value"] = True
+                data.update(
+                    {
+                        "status": "canceled",
+                        "stage": "任务已取消；没有开始识别",
+                        "completed_at": utc_now(),
+                        "pages": page_records,
+                        "warnings": prepared.warnings,
+                    }
+                )
+                return
+            data.update(
+                {
+                    "status": "running",
+                    "stage": f"准备完成，共 {len(page_records)} 页",
+                    "progress": 12,
+                    "pages": page_records,
+                    "warnings": prepared.warnings,
+                    "stats": {
+                        "total_pages": len(page_records),
+                        "completed_pages": 0,
+                        "failed_pages": 0,
+                        "elapsed_seconds": 0,
+                    },
+                }
+            )
+
+        store.mutate(job_id, mark_prepared)
+        if cancelled_while_preparing["value"]:
+            _write_exports(job_id)
+            return
 
         completed_pages = 0
         failed_pages = 0
@@ -496,8 +691,11 @@ def _process_job(job_id: str) -> None:
                 return
 
             def mark_running(data: dict[str, Any]) -> None:
-                data["status"] = "running"
-                data["stage"] = f"正在识别第 {index + 1} / {total} 页"
+                if not data.get("cancel_requested"):
+                    data["status"] = "running"
+                data["stage"] = (
+                    f"{engine_name} · 正在识别第 {index + 1} / {total} 页"
+                )
                 data["progress"] = 12 + round(82 * index / max(total, 1))
                 data["pages"][index]["status"] = "running"
 
@@ -515,17 +713,13 @@ def _process_job(job_id: str) -> None:
                     if not image_file:
                         raise RuntimeError("页面预览文件不存在")
                     image_path = pages_dir / image_file
-                    download_status = model_download.status()
-                    if not download_status.get("model_ready") or not download_status.get("runtime_ready"):
-                        raise RuntimeError("请先在设置中完成模型下载与校验，再重试此任务")
-                    result = engine.scan(
+                    result, diagnostics, _used_engine = _scan_page_image(
+                        engine_id,
                         image_path,
-                        prompt=options["prompt"],
-                        mode=options["mode"],
-                        max_length=options["max_length"],
+                        options,
+                        should_cancel=lambda: _job_cancel_requested(job_id),
                     )
                     page_kind = "ocr"
-                    diagnostics = engine.last_scan_diagnostics()
                 elapsed = round(time.monotonic() - page_started, 2)
 
                 def mark_done(data: dict[str, Any]) -> None:
@@ -536,6 +730,7 @@ def _process_job(job_id: str) -> None:
                             "status": "completed",
                             "text": result,
                             "kind": page_kind,
+                            "engine_id": engine_id,
                             "error": None,
                             "elapsed_seconds": elapsed,
                             "repetition_trimmed": bool(
@@ -544,6 +739,8 @@ def _process_job(job_id: str) -> None:
                             "repetition_diagnostics": diagnostics.get(
                                 "repetition"
                             ),
+                            "usage": diagnostics.get("usage"),
+                            "truncated": bool(diagnostics.get("truncated")),
                         }
                     )
 
@@ -614,6 +811,10 @@ def _process_job(job_id: str) -> None:
     except Exception as exc:
         logger.exception("Job %s failed", job_id)
         try:
+            current_stats = store.get(job_id).get("stats") or {}
+        except Exception:
+            current_stats = {}
+        try:
             store.update(
                 job_id,
                 status="failed",
@@ -622,44 +823,34 @@ def _process_job(job_id: str) -> None:
                 completed_at=utc_now(),
                 error=f"{type(exc).__name__}: {exc}",
                 stats={
-                    **store.get(job_id).get("stats", {}),
+                    **current_stats,
                     "elapsed_seconds": round(time.monotonic() - started, 1),
                 },
             )
             _write_exports(job_id)
         except Exception:
             logger.exception("Unable to persist failure for job %s", job_id)
+            # 兜底：至少把状态改成 failed，避免任务永远停在 running。
+            try:
+                store.update(
+                    job_id,
+                    status="failed",
+                    stage="任务处理失败（细节未能写入）",
+                    completed_at=utc_now(),
+                    error=f"{type(exc).__name__}: {exc}",
+                )
+            except Exception:
+                logger.exception("Unable to mark job %s failed", job_id)
 
 
-def _worker_loop() -> None:
-    while not worker_stop.is_set():
-        try:
-            job_id = job_queue.get(timeout=0.5)
-        except queue.Empty:
-            continue
-        if job_id is None:
-            job_queue.task_done()
-            break
-        try:
-            _process_job(job_id)
-        finally:
-            job_queue.task_done()
-            _unload_model_if_idle("任务队列已全部完成")
+def _run_job(job_id: str) -> None:
+    _process_job(job_id)
 
 
 def _start_worker() -> None:
-    global worker_thread
-    if worker_thread and worker_thread.is_alive():
-        return
-    worker_stop.clear()
-    worker_thread = threading.Thread(
-        target=_worker_loop,
-        name="ocr-job-worker",
-        daemon=True,
-    )
-    worker_thread.start()
+    dispatcher.start()
     for job_id in store.queued_ids():
-        job_queue.put(job_id)
+        dispatcher.submit(job_id)
 
 
 @asynccontextmanager
@@ -671,10 +862,7 @@ async def lifespan(_: FastAPI):
     client_monitor_stop.set()
     if client_monitor_thread:
         client_monitor_thread.join(timeout=3)
-    worker_stop.set()
-    job_queue.put(None)
-    if worker_thread:
-        worker_thread.join(timeout=5)
+    dispatcher.stop()
     if engine.status()["loaded"] and not engine.busy:
         engine.unload()
 
@@ -733,7 +921,10 @@ def health() -> dict[str, Any]:
         "converters": converter_status(),
         "supported_extensions": sorted(SUPPORTED_EXTENSIONS),
         "max_upload_bytes": MAX_UPLOAD_BYTES,
-        "queue_size": job_queue.qsize(),
+        "queue_size": dispatcher.pending_count(),
+        "running_jobs": dispatcher.running_count(),
+        "max_parallel": GLOBAL_MAX_PARALLEL,
+        "engines": _engine_catalog(),
         "lifecycle": {
             "auto_unload": True,
             "client_connected": _client_is_connected(),
@@ -794,10 +985,35 @@ async def create_job(request: Request) -> dict[str, Any]:
             detail=f"暂不支持 {suffix or '未知'} 格式",
         )
 
+    encoded_engine = request.headers.get("x-ocr-engine", "")
+    engine_id = urllib.parse.unquote(encoded_engine).strip() or LOCAL_ENGINE_ID
+    if engine_id != LOCAL_ENGINE_ID:
+        endpoint = registry.get(engine_id)
+        if endpoint is None:
+            raise HTTPException(
+                status_code=422,
+                detail="选择的识别引擎不存在，请刷新后重新选择",
+            )
+        if not endpoint.get("enabled"):
+            raise HTTPException(
+                status_code=409,
+                detail="选择的识别引擎已停用，请启用后再扫描",
+            )
+    if engine_id == LOCAL_ENGINE_ID and not (
+        model_download.status().get("model_ready")
+        and model_download.status().get("runtime_ready")
+    ):
+        raise HTTPException(
+            status_code=409,
+            detail="本机模型尚未下载或校验，请先完成模型准备，或改选已配置的模型接口",
+        )
+
     job = store.create(
         filename=filename,
         content_type=content_type,
         options=options,
+        engine_id=engine_id,
+        engine_label=_engine_label(engine_id),
     )
     source = store.job_dir(job["id"]) / job["source_file"]
     received = 0
@@ -813,18 +1029,41 @@ async def create_job(request: Request) -> dict[str, Any]:
                 writer.write(chunk)
         if received == 0:
             raise HTTPException(status_code=400, detail="上传的文件为空")
-        store.update(
-            job["id"],
-            size=received,
-            status="queued",
-            stage="文件已接收，等待处理",
-            progress=3,
-        )
+
+        def mark_uploaded(data: dict[str, Any]) -> None:
+            data["size"] = received
+            if data.get("cancel_requested") or data.get("status") in {
+                "canceling",
+                "canceled",
+            }:
+                # 上传期间用户已经取消：直接落到终态，不能写成 queued 再被反复调度。
+                data.update(
+                    {
+                        "status": "canceled",
+                        "stage": "任务在接收文件时被取消",
+                        "progress": 0,
+                        "completed_at": utc_now(),
+                        "cancel_requested": True,
+                    }
+                )
+                return
+            data.update(
+                {
+                    "status": "queued",
+                    "stage": "文件已接收，等待处理",
+                    "progress": 3,
+                }
+            )
+
+        store.mutate(job["id"], mark_uploaded)
+        updated = store.get(job["id"])
+        if updated["status"] != "queued":
+            return updated
         with model_operation_lock:
             if model_download.status().get("running"):
                 raise HTTPException(status_code=409, detail="模型正在下载或校验，请完成后再开始扫描")
-            job_queue.put(job["id"])
-        return store.get(job["id"])
+            dispatcher.submit(job["id"])
+        return updated
     except Exception:
         try:
             store.delete(job["id"])
@@ -974,6 +1213,7 @@ def cancel_job(job_id: str) -> dict[str, Any]:
     if job["status"] in {"completed", "partial", "failed", "canceled"}:
         return job
     if job["status"] == "queued":
+        dispatcher.forget(job_id)
         return store.update(
             job_id,
             status="canceled",
@@ -1010,14 +1250,26 @@ def _retry_job_locked(job_id: str) -> dict[str, Any]:
         cancel_requested=False,
         completed_at=None,
     )
-    job_queue.put(job_id)
+    dispatcher.submit(job_id)
     return updated
 
 
 @app.delete("/api/jobs/{job_id}", status_code=204)
 def delete_job(job_id: str) -> Response:
-    _job_or_404(job_id)
+    job = _job_or_404(job_id)
+    busy_statuses = {"running", "preparing", "canceling"}
+    if job["status"] in busy_statuses:
+        if job_id in dispatcher.running_ids():
+            raise HTTPException(status_code=409, detail="任务仍在运行，不能删除")
+        # 上传中断或进程重启遗留的“取消中”任务没有 worker 接手，允许先收尾再删除。
+        store.update(
+            job_id,
+            status="canceled",
+            stage="任务已取消",
+            completed_at=utc_now(),
+        )
     try:
+        dispatcher.forget(job_id)
         store.delete(job_id)
     except RuntimeError as exc:
         raise HTTPException(status_code=409, detail=str(exc)) from exc
@@ -1143,7 +1395,7 @@ def load_model() -> JSONResponse:
 @app.post("/api/model/download", status_code=202)
 def download_model() -> JSONResponse:
     with model_operation_lock:
-        if (engine.busy or engine.status()["loaded"] or job_queue.unfinished_tasks
+        if (engine.busy or engine.status()["loaded"] or _local_jobs_active()
                 or (model_loader_thread and model_loader_thread.is_alive())):
             raise HTTPException(status_code=409, detail="请等待任务结束并卸载模型后再下载或校验")
         try:
@@ -1167,6 +1419,146 @@ def unload_model() -> dict[str, Any]:
     except RuntimeError as exc:
         raise HTTPException(status_code=409, detail=str(exc)) from exc
     return engine.status()
+
+
+@app.get("/api/models")
+def list_engines() -> dict[str, Any]:
+    return {
+        "engines": _engine_catalog(),
+        "max_parallel": GLOBAL_MAX_PARALLEL,
+        "default_concurrency": DEFAULT_ENDPOINT_CONCURRENCY,
+        "local_label": LOCAL_ENGINE_LABEL,
+    }
+
+
+@app.get("/api/models/endpoints")
+def list_endpoints() -> dict[str, Any]:
+    return {"endpoints": registry.public_list()}
+
+
+@app.post("/api/models/endpoints", status_code=201)
+def create_endpoint(payload: dict[str, Any] = Body(...)) -> dict[str, Any]:
+    try:
+        endpoint = registry.create(payload)
+    except EndpointValidationError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    dispatcher.wake()
+    return public_endpoint(endpoint)
+
+
+@app.put("/api/models/endpoints/{endpoint_id}")
+def update_endpoint(
+    endpoint_id: str,
+    payload: dict[str, Any] = Body(...),
+) -> dict[str, Any]:
+    clear_key = payload.pop("clear_api_key", False)
+    raw_key = payload.get("api_key")
+    has_new_key = bool(raw_key) and raw_key != KEEP_KEY_SENTINEL
+    current = registry.get(endpoint_id)
+    url_changed = False
+    if current is not None and payload.get("base_url"):
+        try:
+            candidate_url = normalize_base_url(payload["base_url"])
+        except EndpointValidationError:
+            candidate_url = None
+        url_changed = candidate_url is not None and candidate_url != current["base_url"]
+    if clear_key or (url_changed and not has_new_key):
+        # 地址换了但没给新密钥：丢掉旧密钥，避免密钥被带到另一个主机。
+        payload = {**payload, "api_key": ""}
+    elif raw_key == "":
+        payload = {**payload, "api_key": KEEP_KEY_SENTINEL}
+    try:
+        endpoint = registry.update(endpoint_id, payload)
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail="没有找到这个模型接口") from exc
+    except EndpointValidationError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    dispatcher.wake()
+    return public_endpoint(endpoint)
+
+
+@app.delete("/api/models/endpoints/{endpoint_id}", status_code=204)
+def delete_endpoint(endpoint_id: str) -> Response:
+    running = dispatcher.running_by_engine().get(endpoint_id, 0)
+    if running:
+        raise HTTPException(
+            status_code=409,
+            detail="这个接口仍有任务在运行，请等待完成后再删除",
+        )
+    for job_id in dispatcher.pending_ids():
+        try:
+            pending_engine = store.get(job_id).get("engine_id")
+        except KeyError:
+            continue
+        if pending_engine == endpoint_id:
+            raise HTTPException(
+                status_code=409,
+                detail="这个接口还有排队中的任务，请先取消这些任务再删除",
+            )
+    try:
+        registry.delete(endpoint_id)
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail="没有找到这个模型接口") from exc
+    dispatcher.wake()
+    return Response(status_code=204)
+
+
+@app.post("/api/models/endpoints/{endpoint_id}/test")
+def test_endpoint(
+    endpoint_id: str,
+    payload: dict[str, Any] = Body(default={}),
+) -> JSONResponse:
+    endpoint = registry.get(endpoint_id)
+    if endpoint is None:
+        raise HTTPException(status_code=404, detail="没有找到这个模型接口")
+    candidate = dict(endpoint)
+    if payload.get("base_url"):
+        try:
+            candidate["base_url"] = normalize_base_url(payload["base_url"])
+        except EndpointValidationError as exc:
+            raise HTTPException(status_code=422, detail=str(exc)) from exc
+        # 换成另一个地址时绝不携带已保存的密钥，只有本次显式提交的才使用。
+        candidate["api_key"] = str(payload.get("api_key") or "").strip()
+    elif payload.get("api_key"):
+        candidate["api_key"] = str(payload["api_key"]).strip()
+    if payload.get("model"):
+        candidate["model"] = str(payload["model"]).strip()
+    started = time.monotonic()
+    try:
+        models = RemoteEngine(candidate).list_models()
+    except RemoteEngineError as exc:
+        return JSONResponse(
+            {"ok": False, "message": str(exc)},
+            status_code=502,
+        )
+    latency_ms = round((time.monotonic() - started) * 1000)
+    return JSONResponse(
+        {
+            "ok": True,
+            "models": models,
+            "model_found": candidate["model"] in models,
+            "latency_ms": latency_ms,
+            "message": (
+                "连接正常，模型已加载"
+                if candidate["model"] in models
+                else "连接正常，但模型列表中没有这个模型 ID"
+            ),
+        }
+    )
+
+
+@app.post("/api/models/discover")
+def discover_models(payload: dict[str, Any] = Body(...)) -> dict[str, Any]:
+    try:
+        base_url = normalize_base_url(payload.get("base_url"))
+    except EndpointValidationError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    api_key = str(payload.get("api_key") or "").strip()
+    try:
+        models = probe_models(base_url, api_key)
+    except RemoteEngineError as exc:
+        raise HTTPException(status_code=502, detail=str(exc)) from exc
+    return {"models": models}
 
 
 @app.exception_handler(Exception)

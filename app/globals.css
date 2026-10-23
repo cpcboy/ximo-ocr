@@ -794,7 +794,7 @@ a {
   border-top: 1px solid var(--line);
   display: grid;
   gap: 15px;
-  grid-template-columns: auto minmax(170px, 1fr) auto;
+  grid-template-columns: auto auto minmax(150px, 1fr) auto;
   margin: 12px -13px -13px;
   padding: 13px;
 }
@@ -3521,3 +3521,264 @@ a {
     width: 100% !important;
   }
 }
+
+/* ---- 多模型接口与并行扫描 ---- */
+
+.field-inline select {
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  font-size: 11px;
+  min-height: 35px;
+  outline: 0;
+  padding: 7px 9px;
+  width: 100%;
+}
+
+.field-inline select:focus {
+  border-color: var(--accent);
+}
+
+.engine-picker {
+  min-width: 0;
+}
+
+.engine-picker select {
+  max-width: 100%;
+  text-overflow: ellipsis;
+}
+
+.privacy-badge-remote {
+  color: var(--accent);
+}
+
+.engine-chip {
+  background: var(--accent-soft);
+  border-radius: 5px;
+  color: var(--accent);
+  font-size: 9px;
+  font-weight: 650;
+  max-width: 92px;
+  overflow: hidden;
+  padding: 2px 5px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.parallel-meter {
+  align-items: center;
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  color: var(--muted);
+  display: flex;
+  font-size: 11px;
+  gap: 7px;
+  padding: 9px 11px;
+}
+
+.parallel-meter strong {
+  color: var(--ink);
+}
+
+.engine-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.engine-row {
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  padding: 10px 11px;
+}
+
+.engine-row-off {
+  opacity: 0.62;
+}
+
+.engine-row-head {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+
+.engine-row-head strong {
+  font-size: 12px;
+  font-weight: 680;
+}
+
+.engine-dot {
+  border-radius: 50%;
+  height: 7px;
+  width: 7px;
+}
+
+.dot-on {
+  background: var(--green);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--green) 16%, transparent);
+}
+
+.dot-off {
+  background: var(--muted);
+}
+
+.engine-tag {
+  background: var(--surface-3);
+  border-radius: 5px;
+  color: var(--muted);
+  font-size: 9px;
+  font-weight: 650;
+  padding: 2px 6px;
+}
+
+.engine-tag-live {
+  align-items: center;
+  background: var(--accent-soft);
+  color: var(--accent);
+  display: inline-flex;
+  gap: 3px;
+}
+
+.engine-row-detail {
+  color: var(--muted);
+  font-family: var(--font-mono);
+  font-size: 9px;
+  margin-top: 5px;
+  overflow-wrap: anywhere;
+}
+
+.engine-row-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 9px;
+}
+
+.engine-row-actions button {
+  align-items: center;
+  background: transparent;
+  border: 1px solid var(--line-strong);
+  border-radius: 6px;
+  color: var(--ink-soft);
+  display: inline-flex;
+  font-size: 10px;
+  gap: 4px;
+  min-height: 26px;
+  padding: 0 8px;
+}
+
+.engine-row-actions button:hover:not(:disabled) {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.engine-row-actions button:disabled {
+  opacity: 0.5;
+}
+
+.engine-row-actions .danger-link:hover:not(:disabled) {
+  border-color: var(--red);
+  color: var(--red);
+}
+
+.engine-empty {
+  color: var(--muted);
+  font-size: 11px;
+  padding: 8px 2px;
+}
+
+.engine-form {
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  margin-top: 10px;
+  padding: 11px;
+}
+
+.engine-form-grid {
+  display: grid;
+  gap: 9px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.engine-form-grid label {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  min-width: 0;
+}
+
+.engine-form-grid label > span {
+  color: var(--muted);
+  font-size: 9px;
+  font-weight: 650;
+}
+
+.engine-form-grid input {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  font-size: 11px;
+  min-height: 32px;
+  outline: 0;
+  padding: 6px 8px;
+  width: 100%;
+}
+
+.engine-form-grid input:focus {
+  border-color: var(--accent);
+}
+
+.engine-form-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  margin-top: 10px;
+}
+
+.engine-form-actions .button {
+  font-size: 11px;
+  min-height: 30px;
+  padding: 0 10px;
+}
+
+.engine-form-hint {
+  color: var(--muted);
+  display: block;
+  font-size: 9px;
+  line-height: 1.5;
+  margin-top: 9px;
+}
+
+.engine-form-hint code {
+  background: var(--surface-3);
+  border-radius: 3px;
+  font-family: var(--font-mono);
+  padding: 1px 3px;
+}
+
+.truncated-badge {
+  background: var(--orange-soft);
+  color: var(--orange);
+}
+
+.settings-section .button-ghost {
+  background: transparent;
+  border: 1px solid var(--line-strong);
+  color: var(--muted);
+}
+
+@media (max-width: 720px) {
+  .quick-options {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .engine-form-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
