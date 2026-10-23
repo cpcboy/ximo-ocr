@@ -93,7 +93,7 @@ Mac Swift / WKWebView                  Windows NSIS EXE / Python 启动器 / Edg
 
 ### 4.1 目录
 
-原机器的开发源码工作区迁移目标为 `~/cpcsoft/OCR`；环境路径修复、原样保全及实际完成证据入口见 [PATH_MIGRATION.md](../PATH_MIGRATION.md)。这不改变下表安装版数据目录，也不改变之前 ZIP 的固定来源。
+原机器的开发源码工作区已迁至 `~/cpcsoft/OCR`；环境路径修复、原样保全及实际完成证据见 [PATH_MIGRATION.md](../PATH_MIGRATION.md)。旧源码根已不存在，不需要兼容软链接。这不改变下表安装版数据目录，也不改变之前 ZIP 的固定来源。
 
 | 类别 | Mac 安装版 | Windows 安装版 |
 | --- | --- | --- |
