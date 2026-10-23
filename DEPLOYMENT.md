@@ -1,5 +1,20 @@
 # 构建、发布与回滚
 
+## 2026-10-23 源码交接（不是应用部署）
+
+用户本次仅要求详细 DeepSeek 交接工单与源码包。入口见 [START_HERE-DEEPSEEK.md](START_HERE-DEEPSEEK.md)。
+应用功能基线为 PR #11 合并 `352665be7f147474af1cf93f522958e3972cb052`；本次文档 PR 成功 CI/合并后，
+从干净 main 的 Git 跟踪树导出 ZIP（`git archive --format=zip --prefix=<单一包根目录>/ --output=<全新ZIP路径> HEAD`）。
+尖括号为需核对的实际参数，目标 ZIP 必须不存在；不递归压缩工作目录、不包含 `.git`、ignored/untracked 或业务数据。
+交付时单独给 SHA-256、精确源 SHA；解压到全新临时目录，核对 CRC、所有文件与 Git blob 一致、中文名、链接和入口可读。
+文档 PR 和打包后的验证结果分别留证；真实阅读入口验证不冒充新 OCR/原生 App 验收。
+
+本次不手工构建/交付/发布新安装器，不运行 install，不触发模型下载，不替换、退出或重启用户 App，不新建/改动 GitHub Release。
+保留既有 PR/main CI 的 Windows 测试安装器构建及 7 天 artifact；这不属于新候选发行或实机验收，也不进入交接包。
+历史单次安装/分发授权不转移给新维护者；新的 MLX 原生更新仍需逐次确认和下方原部署门禁。
+交接 ZIP 没有 Git 历史，不能直接通过来源门禁；开发者应 clone 官方仓库，不伪造 SOURCE_COMMIT 或删掉校验。
+文档错误通过 revert/修正文档 PR，重导出不同文件名的交接包；不覆盖历史交付，无应用回滚需求。
+
 ## 当前 MLX 效率优化（未部署）
 
 本次用户要求研究并优化 Mac 无损推理效率。按既有 review/PR/CI/合并流程，验证只用隔离合成图及已校验模型；公开 rc.2、安装版和用户数据不变。替换本机 App 的追加确认尚待答复，未确认不执行 install、不发布新的公开安装包。基准命令/来源/质量与性能边界见 MLX_PERFORMANCE.md。

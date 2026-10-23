@@ -1,5 +1,12 @@
 # 变更记录
 
+## 2026-10-23 — DeepSeek 源码与工单交接（文档变更）
+
+- 新增 [接手入口](START_HERE-DEEPSEEK.md)、[技术交接](handoff/DEEPSEEK_HANDOFF.md)、[DS-00 至 DS-06 工单](handoff/WORK_ORDERS.md)，说明架构、命令、权限/数据边界、现有证据、未验范围和回滚。
+- 核对 PR #11 已合并源 `352665be7f147474af1cf93f522958e3972cb052`、最终 PR/main CI 成功；回填原 MLX 文档中待核对的合并状态。公开 rc.2 源和本机安装源保持不变，均不含该优化。
+- 只从本次文档 PR 合并后的 Git 跟踪树导出交接 ZIP，并另提供校验值；不含模型、业务数据、私有日志、依赖、备份和凭据。ZIP 无 `.git`，继续开发/正式构建须重新 clone。
+- 不改应用代码、配置或版本，不手工构建/交付/发布新安装器、不部署或重启、不自动发送到 DeepSeek。保留既有 PR/main CI 自动构建 Windows 测试 artifact（保留 7 天），不视为新候选发行或实机验收。文档回滚走 revert PR；无需应用/业务数据回滚。
+
 ## 未发布 — Apple Silicon 推理闲置缓存优化
 
 - 仅在 token 已确定的安全点回收超过 1 GiB 的闲置 MLX 缓存，及时释放过期 logits 引用；不改 FP16 权重、分辨率、切块、输出长度、GPU 计算和防重复规则。
