@@ -8,6 +8,11 @@
 [Releases](https://github.com/cpcboy/ximo-ocr/releases) 获取；没有发布的版本不能用本机候选构建替代。
 项目采用 [AGPL-3.0-only](LICENSE)，第三方许可见 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)。
 
+准备交给 DeepSeek 或其他维护者时，先读 [接手入口](START_HERE-DEEPSEEK.md)、
+[详细技术交接](handoff/DEEPSEEK_HANDOFF.md) 和 [接手工单](handoff/WORK_ORDERS.md)。
+2026-10-23 交接只打包已合并源码/文档，不包含模型、扫描数据或凭据，不更新 App 或发布新安装包。
+最新功能源码含 PR #11 的 MLX 优化，公开 rc.2 和原机安装版仍不含该优化；不要混淆三者。
+
 1.3.0 当前验收状态见 [MODEL_DOWNLOAD_VALIDATION.md](MODEL_DOWNLOAD_VALIDATION.md)。Windows 始终明确区分候选包与目标 Windows 10 / NVIDIA 实机验收。
 
 ## 开始使用

@@ -123,6 +123,7 @@ Windows 的真实安装、杀毒软件扫描、首次下载、真实 OCR、退�
 - 本机候选更新与数据保全记录：`LOCAL_PREVIEW_UPDATE.md`，区分更新计划、实际部署及验收结果。
 - 当前候选分发：`RELEASE_CANDIDATE_v1.3.0-rc.2.md`、`RC2_VALIDATION.md`；含实际来源、包哈希、原生/公开验证边界，不替代正式验收。
 - MLX 无损调度研究与性能/输出一致性、浏览器、部署状态：`MLX_PERFORMANCE.md`。
+- DeepSeek 交接入口：`START_HERE-DEEPSEEK.md`；技术说明及有验收条件的工单：`handoff/DEEPSEEK_HANDOFF.md`、`handoff/WORK_ORDERS.md`。接手默认只做 DS-00，不延续历史单次部署授权。
 
 ### 回滚方式
 
@@ -158,11 +159,19 @@ Windows 的真实安装、杀毒软件扫描、首次下载、真实 OCR、退�
 
 用户要求研究 Mac 的 MLX 加速，并在不降低质量的情况下优化墨析。允许按六步进行源码优化和隔离合成样本验证，继续既有 PR/合并流程；不改变权重/质量参数/权限/数据口径。替换已安装 App 的追加确认尚待回复，本次不据历史单次授权自动安装，不新发公开包或操作 Windows。现安装版/公开 rc.2 状态保持上文；性能与真实路径结果见 MLX_PERFORMANCE.md。
 
+### 本次 DeepSeek 交接范围（2026-10-23）
+
+用户要求“写详细的交接工单文档，然后打包”。本次只新增/更新交接文档并按独立 review → PR/CI/合并流程，从合并后的干净 main 导出 Git 跟踪源码 ZIP。模型、扫描原件/识别结果/阅读状态、私有证据日志、凭据、运行时/依赖、备份和安装包不随交接发送；不自动上传到 DeepSeek。项目 offline 存储例外和所有权限门禁不变。
+
+已只读核对功能基线 PR #11 合并源 `352665be7f147474af1cf93f522958e3972cb052`、最终 PR CI39843033560/main CI39843742424 成功；公开 rc.2 仍为 `3e9a7e2...`，原机安装仍为 `b7d29292...` / 1.3.0(6)，后二者未包含 MLX 优化。本次不手工构建/交付/发布新安装器、不下载/加载模型、不启动/退出/替换/重启 App、不读写业务扫描、不操作远端 Windows、不新发候选或正式版。保留既有 PR/main CI 自动构建 Windows 测试 artifact（保留 7 天），不视为新候选发行或实机验收、不放入交接包。
+
+交接验收是源码包的 hash/CRC、逐文件与 Git 对照、隐私排除、全新目录解压、真实文档入口及链接；不以此替代新的浏览器 OCR/原生/Windows 实机验收。最后打包 SHA/校验及合并证据随交付记录提供；接手方必须重新核对最新状态并取得下一工单所需授权。
+
 ## 变更执行记录
 
 | 日期 | 变更内容 | review 结论 | 文档更新 | commit | 部署 | 验证证据 | 回滚方式 |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| 2026-10-22 | Apple Silicon MLX 闲置缓存软阈值回收；权重与生成算法不变 | 独立代码/基准/网页证据/文档末轮P0/P1/P2=0；实验工具3项P2、CI编码、最终计时表述P2已修复复核 | 本文件专项测试/文档路径/优化范围/本行；README、CHANGELOG、DEPLOYMENT；新增 MLX_PERFORMANCE 实测/源码溯源/真实浏览器章节 | 优化 d501ffde54f6d7c07dfd8a3e84be8142048b7183；编码 d23aa16033aa0a602d2977fab23fe647ebc11ec0；PR #11，证据回填后核对最终CI再合并 | 未部署/未重启现安装 App，不发布新包；只启动并退出隔离源码前后端 | 本机68 Python、lint、构建+11 Node；CI39840634398 Linux/Windows通过；五图20次10对完整输出相同，本次累计耗时减少38.16%/峰值不变；真实批量选图/OCR/阅读/ZIP/自动卸载、403及退出释放通过，临时合成任务已可恢复清理，详见MLX_PERFORMANCE | 未部署无需App回滚；源码revert PR，未来安装使用独立previous.app审计备份，不动业务数据 |
+| 2026-10-22 | Apple Silicon MLX 闲置缓存软阈值回收；权重与生成算法不变 | 独立代码/基准/网页证据/文档末轮P0/P1/P2=0；实验工具3项P2、CI编码、最终计时表述P2已修复复核 | 本文件专项测试/文档路径/优化范围/本行；README、CHANGELOG、DEPLOYMENT；新增 MLX_PERFORMANCE 实测/源码溯源/真实浏览器章节 | 优化 d501ffde54f6d7c07dfd8a3e84be8142048b7183；编码 d23aa16033aa0a602d2977fab23fe647ebc11ec0；PR #11 合并352665be7f147474af1cf93f522958e3972cb052；2026-10-23交接复核最终PR/main CI成功 | 未部署/未重启现安装 App，不发布新包；只启动并退出隔离源码前后端 | 本机68 Python、lint、构建+11 Node；最终PR CI39843033560/main CI39843742424 Linux/Windows通过；五图20次10对完整输出相同，本次累计耗时减少38.16%/峰值不变；真实批量选图/OCR/阅读/ZIP/自动卸载、403及退出释放通过，临时合成任务已可恢复清理，详见MLX_PERFORMANCE | 未部署无需App回滚；源码revert PR，未来安装使用独立previous.app审计备份，不动业务数据 |
 | 2026-10-22 | 按第 11 项授权准备将阅读修复打入 rc.2 两平台新候选；旧批次保留 | 代码独立 review 新增 P0/P1/P2=0；后续文档/实包另审 | 本文件第 11 项/本行；README、CHANGELOG、DEPLOYMENT、Windows说明；新增 rc.2 发行与验收说明 | 准备 `31f9d7659964fb8c83b93976e5a5fc796f4a6cf6`；PR #9 合并 `3e9a7e2ea2bc33fd58cafd33520a1928599a28c3` | 本行为准备阶段历史，实际发布见表末新行；本机 App/数据不变 | 57 Python、lint、构建+11 Node；旧构建备份签名/包哈希回读通过，PR/main CI 后续成功 | 新候选异常停止公开/标撤回保留原包，源码 revert PR；不回滚业务数据 |
 | 2026-10-21 | 建立维护铁律与 AI 入口，用户已确认存储/初始化/平台/发布四项口径 | 已自查及独立对抗 review；P2 构建前备份时机已修复；四项确认记录复核通过；剩余 P0/P1/P2=0 | 本文件：用户原文、本项目信息、构建前备份、用户确认口径、执行记录；新增 AGENTS.md | `0f4828e831c124422c264932a296029deea91aa7`；PR #1 合并 `8feb90175a46810a834ddd41904fe6c3808b3354`；空初始化 `af9c418` | 仅文档已合并；应用未部署、未重启 | 只读核对源码命令、App 版本、模型卡及远端空仓库；diff 空白检查通过；未做功能验收 | revert PR；不修改应用与业务数据 |
 | 2026-10-21 | App 内分平台下载模型、便携运行时、来源拦截、安装器和 AGPL 开源说明 | 下载/打包及许可补充末轮独立 review P0/P1/P2=0；CI CRLF 与 NSIS 路径/编码修复均已独立复核 | README、CHANGELOG、DEPLOYMENT、MODEL_DOWNLOAD_VALIDATION、Windows 交接；本文件命令、确认第 5/6/7 项、执行记录 | 功能 `a76a7e9aa8b137ec217546430ac16ba17405c160`；PR #2；合并与构建记录后续文档 PR 回填 | 按最新授权仅交付候选；生产 1.2.2 未替换；未发布 Release | 57 Python、7 前端/来源/许可测试通过；PR 两轮 CI 暴露 CRLF/NSIS 问题，已修复待重跑；真实 Mac 下载/暂停/退出/续传、文本导入/阅读/完整 ZIP 导出通过；全量模型 OCR、Windows 实机未验收；系统诊断及边界见验收记录 | 保留旧 App/源码备份；未部署无需回滚；部署后的回滚按 DEPLOYMENT.md |
@@ -173,3 +182,4 @@ Windows 的真实安装、杀毒软件扫描、首次下载、真实 OCR、退�
 | 2026-10-22 | 按第 10 项授权最小修复阅读主题继承，准备重新更新 | 独立代码/文档末轮 review P0/P1/P2=0；两项文档 P2（历史参数/测试状态）已修正复核；提交前原视觉问题待实机复验 | 本文件第 10 项/部署状态/本行；LOCAL_PREVIEW_UPDATE、README、CHANGELOG、DEPLOYMENT、两份历史验收指针 | 修复 `ccf73d0e4adc14e02ed160dd4b1ef0025c4c78f7`；PR #7 合并 `b7d29292c18aa30fa00e4aef9f33ca57663100ad`；不改写原公开包来源 | 此准备阶段未部署；实际安装及验证见下一行 | 57 Python、lint、构建 + 10 Node（含3新增）通过；PR/main CI 均成功，原生结果见下一行 | 新安装失败按其 previous.app 和 installed-manifest.json 回退；不覆盖扫描和模型数据 |
 | 2026-10-22 | 合并配色修复后备份更新本机候选，回填真实验证 | 安装后独立证据复核新增 P0/P1/P2=0；原视觉 P2 经逐张截图复验仅在本机修复范围关闭，既有公开分发/OCR/Windows 缺口保留 | 本文件部署状态/本行；LOCAL_PREVIEW_UPDATE 最新实测、回退和证据；README/CHANGELOG/DEPLOYMENT 及两份验收指针 | 实际 App 源 `b7d29292c18aa30fa00e4aef9f33ca57663100ad`；本行证据另经文档 PR，不改包来源 | 已更新 `/Applications/墨析 OCR 工作台.app` 1.3.0(6)，隔离/正常重启验证后正常退出；未更换公开资产、未操作 Windows | 四主题/原始文本/文件框/合成导入/完整 ZIP/退出通过；367业务文件及5旧模型文件哈希不变；PR CI 39807735751/main CI 39809202219 成功；原生既有诊断未消除；临时合成目录可恢复清理 | 耐久备份 install-reader-fix/previous.app + installed-manifest.json，原 rollback 入口与新审计目录；只回退 App，不动数据 |
 | 2026-10-22 | 发布含阅读修复的 rc.2 双平台候选；记录新 DMG 原生及公开分发验收 | 代码/实包/原生证据/发行正文/公开分发/六文档独立复核；1项P2相对链接已修并复核关闭，末轮P0/P1/P2=0；正式验收边界保留 | 本文件状态/构建命令/文档路径/第11项退出及浏览器授权/本行；README、CHANGELOG、DEPLOYMENT、RC2_VALIDATION、rc.2发行说明 | 两包与tag源 `3e9a7e2ea2bc33fd58cafd33520a1928599a28c3`（PR #9）；本行证据另经文档PR，不改包源 | GitHub Pre-release已公开、非Latest；正常退出现有App后隔离启动/退出新DMG；未替换安装版、未安装Windows | PR CI39821165263/main CI39822054430成功；内置浏览器页面/四下载与独立公开回读通过、哈希相同；新DMG四主题/文件框/合成TXT/ZIP/退出通过，369业务/13managed模型/5legacy文件哈希不变；完整OCR/Windows仍未验 | 公开候选异常标撤回、保留tag/原包；现安装版不变无需App回滚；不改业务数据 |
+| 2026-10-23 | DeepSeek 技术交接、DS-00至DS-06工单与受控源码归档 | 三份交接主文档独立review P0/P1/P2=0；索引/执行记录及最终包另复核，结果随交付回执 | 新增START_HERE-DEEPSEEK与handoff两文档；README/CHANGELOG/DEPLOYMENT；MLX合并证据；本文件文档路径/交接范围/MLX行/本行 | 交接文档提交/PR待生成；功能基线352665b；最终打包SHA以Git archive注释及交付校验回执为准 | 仅交接源码；无应用部署/重启、无新Release、无模型或业务数据操作 | 本机68 Python（5条既有SWIG告警）/lint/初始14文档链接/diff通过；本次PR/main CI及最终解压/逐文件/入口验收另随交付记录，不提前登记为通过 | 文档revert或修正PR后重导出新文件名；原App/公开包/业务数据未变，无应用回滚 |

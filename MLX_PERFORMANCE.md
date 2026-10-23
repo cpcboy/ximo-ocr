@@ -2,6 +2,12 @@
 
 状态：2026-10-22 源码候选，尚未更新已安装 App 或公开 rc.2 安装包。只使用本机合成样本和已校验模型；不扫描、上传或迁移用户业务文件。性能、输出一致性、浏览器验收与部署分别登记，未通过项不冒记完成。
 
+2026-10-23 交接复核：PR #11 已合并为 `352665be7f147474af1cf93f522958e3972cb052`，
+最终 PR CI [39843033560](https://github.com/cpcboy/ximo-ocr/actions/runs/39843033560) 与 main CI
+[39843742424](https://github.com/cpcboy/ximo-ocr/actions/runs/39843742424) 均已回读成功。
+“源码候选”指未进入新原生安装包/生产，不表示 PR 仍待合并；现装 App 和公开 rc.2 仍未更新。
+接手说明见 [技术交接](handoff/DEEPSEEK_HANDOFF.md)，不把后续文档合并 SHA 当作已发布安装器来源。
+
 ## 研究结论与边界
 
 - 此项目的 `LoJexLLM/Unlimited-OCR-MLX` 转换版使用 MLX，在 Apple Silicon 上通过 Metal GPU 执行。已安装 App 自带 MLX 0.29.3，实际探针为 `Device(gpu, 0)`、Metal 可用，无需用户另装框架，也不经过 LM Studio。MLX 不是所有 Mac 模型加速的唯一途径，本结论仅针对此模型/引擎；不声称使用 Neural Engine。
@@ -94,7 +100,7 @@ ZIP 有原图、页面预览、TXT/JSON/Markdown 共5项；CRC 全通过，原�
 
 - 代码自查及独立对抗 review：阈值版 P0/P1/P2=0。修复了实验工具方法恢复、失败状态、吞吐指标命名；补纯 CPU 阈值边界/连续调用、EOS/长度和原生成算法 AST 等价契约。
 - 本机完整 pytest **68 passed**（5条既有 SWIG 弃用警告）、lint 通过、`npm test` 构建及 **11 项 Node 测试通过**；11项新增纯CPU测试、语法和 diff 空白检查通过。实际模型数值/性能不由这些单测替代。
-- [PR #11](https://github.com/cpcboy/ximo-ocr/pull/11) 首轮 CI `39840098911` 暴露 Windows 测试按 cp1252 读取含中文源码的问题（4项失败）；Linux各测试步骤通过，但因矩阵 fail-fast 最终 cancelled，整轮不记成功。仅将新测试的6处读取明确为 UTF-8，经独立 review P0/P1/P2=0、本机11项复验后重跑；不改模型实现或放宽测试。修复提交 `d23aa16` 的 [CI 39840634398](https://github.com/cpcboy/ximo-ocr/actions/runs/39840634398) Linux、Windows 均成功；证据文档提交后的最终 PR/main CI 仍须单独核对。
+- [PR #11](https://github.com/cpcboy/ximo-ocr/pull/11) 首轮 CI `39840098911` 暴露 Windows 测试按 cp1252 读取含中文源码的问题（4项失败）；Linux各测试步骤通过，但因矩阵 fail-fast 最终 cancelled，整轮不记成功。仅将新测试的6处读取明确为 UTF-8，经独立 review P0/P1/P2=0、本机11项复验后重跑；不改模型实现或放宽测试。修复提交 `d23aa16` 的 [CI 39840634398](https://github.com/cpcboy/ximo-ocr/actions/runs/39840634398) Linux、Windows 均成功；证据文档提交后的最终 PR/main CI 亦已成功，交接时复核记录见文首。
 - 上节真实浏览器隔离路径、自动卸载、下载包回读及临时服务端口/进程释放通过；独立 reviewer 实看三截图、比对 ZIP/任务/输入、检查日志和两平台 CI。1项计时表述 P2 已修正并复核关闭，最终证据/文档 P0/P1/P2=0，不以单元测试替代页面操作。
 - 本次尚未得到替换已安装 App 的追加确认；先按既有流程 review → 文档 → PR/CI/合并。未确认不更新 `/Applications`、不发新公开安装包、不操作 Windows。
 - 如果获确认，按 DEPLOYMENT.md 的原 snapshot/install/rollback 流程，先备份旧构建和现装 App，校验漂移与所有任务终态，再从合并后 clean main 构建/部署/真实复验。任何关键路径或数据保全失败则恢复旧 App，不改数据掩盖问题。
