@@ -1,5 +1,10 @@
 # 构建、发布与回滚
 
+## 2026-10-23 本机源码工作区迁移
+
+用户指定迁至 `~/cpcsoft/OCR`。按 [PATH_MIGRATION.md](PATH_MIGRATION.md) 先 PR/review/CI/合并，再做同卷原样迁移、8 个 venv 路径修复和隔离浏览器验收。新目录为后续开发/构建起点，源码脚本仍自动推导根目录。
+保存全树清单、环境原文件和旧 dist；不重写历史安装包/签名/审计，不迁移安装版扫描及模型，不重启或更新 App、不发布新候选。既有 CI 测试 artifact 不是发行。迁移失败按该文档移回旧根；业务数据不回滚。
+
 ## 2026-10-23 源码交接（不是应用部署）
 
 用户本次仅要求详细 DeepSeek 交接工单与源码包。入口见 [START_HERE-DEEPSEEK.md](START_HERE-DEEPSEEK.md)。

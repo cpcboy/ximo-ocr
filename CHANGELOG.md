@@ -1,5 +1,11 @@
 # 变更记录
 
+## 2026-10-23 — 本机开发目录迁移
+
+- 按用户要求将源码工作区迁至 `~/cpcsoft/OCR`，更新 AI 入口、README、部署和 DeepSeek 交接路径，新增 `PATH_MIGRATION.md` 的检查、保全、隔离验收及回滚流程。
+- 本机 venv 的 8 个激活/CLI/配置文件只做已备份的路径前缀修复，不升级依赖；应用源码已按相对根路径工作，无需改业务逻辑。
+- 原 data/构建/证据/备份随目录原样迁移；不更改已安装 App、模型存放位置、公开 Release 或历史交接 ZIP。PR 合并与实际迁移完成分开留证。
+
 ## 2026-10-23 — DeepSeek 源码与工单交接（文档变更）
 
 - 新增 [接手入口](START_HERE-DEEPSEEK.md)、[技术交接](handoff/DEEPSEEK_HANDOFF.md)、[DS-00 至 DS-06 工单](handoff/WORK_ORDERS.md)，说明架构、命令、权限/数据边界、现有证据、未验范围和回滚。
