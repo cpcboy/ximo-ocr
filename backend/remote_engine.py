@@ -93,6 +93,26 @@ def _opener(url: str) -> urllib.request.OpenerDirector:
     return urllib.request.build_opener(*handlers)
 
 
+def _ensure_reachable(url: str, *, timeout: float = 10.0) -> None:
+    """先用短超时探一次 TCP，避免地址不可达时把 600 秒读超时耗在建连上。"""
+    parts = urllib.parse.urlsplit(url)
+    host = parts.hostname
+    if not host:
+        raise RemoteEngineError("接口地址缺少主机名")
+    port = parts.port or (443 if parts.scheme == "https" else 80)
+    try:
+        with socket.create_connection((host, port), timeout=timeout):
+            return
+    except (socket.timeout, TimeoutError) as exc:
+        raise RemoteEngineError(
+            f"连接模型接口超时（{int(timeout)} 秒），请检查地址与网络"
+        ) from exc
+    except OSError as exc:
+        raise RemoteEngineError(
+            f"无法连接模型接口：{exc.strerror or exc}"
+        ) from exc
+
+
 def _describe_http_error(error: urllib.error.HTTPError, api_key: str = "") -> str:
     detail = ""
     try:
@@ -207,6 +227,7 @@ class RemoteEngine:
         api_key = str(self.endpoint.get("api_key") or "")
         headers = _auth_headers(api_key)
         opener = _opener(url)
+        _ensure_reachable(url)
         last_error = "未知错误"
         for attempt in range(retries + 1):
             if should_cancel and should_cancel():
@@ -235,8 +256,14 @@ class RemoteEngine:
                     f"等待模型响应超时（{int(timeout)} 秒），请检查接口状态或调低并发"
                 ) from error
             except urllib.error.URLError as error:
-                reason = redact_secrets(str(getattr(error, "reason", error)), api_key)
-                last_error = f"连接模型接口失败：{reason}"
+                reason = getattr(error, "reason", error)
+                if isinstance(reason, (socket.timeout, TimeoutError)):
+                    # 连接阶段超时同样不重试，避免一个不可达地址连等三次超时。
+                    raise RemoteEngineError(
+                        f"连接模型接口超时（{int(timeout)} 秒），请检查地址与网络"
+                    ) from error
+                detail = redact_secrets(str(reason), api_key)
+                last_error = f"连接模型接口失败：{detail}"
                 if attempt >= retries:
                     raise RemoteEngineError(last_error) from error
             except json.JSONDecodeError as error:

@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import io
 import json
+import socket
 import urllib.error
 
 import pytest
@@ -62,6 +63,7 @@ def make_endpoint(**overrides):
 
 def patch_opener(monkeypatch, opener: FakeOpener):
     monkeypatch.setattr(remote_engine, "_opener", lambda url: opener)
+    monkeypatch.setattr(remote_engine, "_ensure_reachable", lambda url: None)
     monkeypatch.setattr(remote_engine.time, "sleep", lambda _seconds: None)
     return opener
 
@@ -266,6 +268,24 @@ def test_timeout_is_not_retried(tmp_path, monkeypatch):
     assert len(opener.requests) == 1
 
 
+def test_url_error_wrapped_timeout_is_not_retried(tmp_path, monkeypatch):
+    image = tmp_path / "page.png"
+    image.write_bytes(b"png")
+    error = urllib.error.URLError(socket.timeout("timed out"))
+    opener = patch_opener(monkeypatch, FakeOpener([error, completion("不应重试")]))
+    with pytest.raises(RemoteEngineError) as excinfo:
+        RemoteEngine(make_endpoint()).scan(image, prompt="x", max_length=4096)
+    assert "超时" in str(excinfo.value)
+    assert len(opener.requests) == 1
+
+
+def test_unreachable_endpoint_fails_fast(monkeypatch):
+    monkeypatch.setattr(remote_engine, "_opener", lambda url: FakeOpener([]))
+    with pytest.raises(RemoteEngineError) as excinfo:
+        remote_engine._ensure_reachable("http://127.0.0.1:1/v1", timeout=1)
+    assert "无法连接" in str(excinfo.value)
+
+
 def test_cancelled_before_request_is_reported(tmp_path, monkeypatch):
     image = tmp_path / "page.png"
     image.write_bytes(b"png")
@@ -295,3 +315,26 @@ def test_assistant_prefix_only_stripped_at_start(tmp_path, monkeypatch):
     patch_opener(monkeypatch, FakeOpener([completion(body)]))
     text, _ = RemoteEngine(make_endpoint()).scan(image, prompt="x", max_length=4096)
     assert text == body
+
+
+def test_cross_origin_redirect_drops_authorization():
+    import urllib.request
+
+    from backend.remote_engine import _SameOriginRedirectHandler
+
+    handler = _SameOriginRedirectHandler()
+    request = urllib.request.Request(
+        "http://a.test/v1/models",
+        headers={"Authorization": "Bearer sk-secret"},
+    )
+    cross = handler.redirect_request(
+        request, None, 302, "Found", {}, "http://b.test/v1/models"
+    )
+    assert cross is not None
+    assert cross.get_header("Authorization") is None
+
+    same = handler.redirect_request(
+        request, None, 302, "Found", {}, "http://a.test/v2/models"
+    )
+    assert same is not None
+    assert same.get_header("Authorization") == "Bearer sk-secret"

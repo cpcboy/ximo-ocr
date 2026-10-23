@@ -182,7 +182,7 @@ Windows 的真实安装、杀毒软件扫描、首次下载、真实 OCR、退�
 3. **本机 MLX 参与并行调度，但保持串行（1 路）。**
 4. **验证通过后安装到本机 `/Applications`。** 安装仍按 `scripts/deploy_macos.py` 的 snapshot/install 门禁执行，先备份旧 App，不迁移/覆盖扫描数据与模型。
 
-接口密钥来自本机已有 OpenCode 凭据（`strata-3090ti` / `strata-4090`），只写入运行数据目录 `data/config/models.json`（0600），不进入 Git、日志、导出结果或聊天记录；文档和测试中只出现掩码字段。
+接口密钥复用本机已有的 OpenCode 凭据（不新增、不外发），只写入运行数据目录 `data/config/models.json`（0600），不进入 Git、日志、导出结果或聊天记录；文档和测试中只出现掩码字段。
 
 本次不涉及：Windows 目标机、公开 Release、正式版、模型下载逻辑、数据库或业务数据迁移。
 
@@ -204,3 +204,4 @@ Windows 的真实安装、杀毒软件扫描、首次下载、真实 OCR、退�
 | 2026-10-22 | 合并配色修复后备份更新本机候选，回填真实验证 | 安装后独立证据复核新增 P0/P1/P2=0；原视觉 P2 经逐张截图复验仅在本机修复范围关闭，既有公开分发/OCR/Windows 缺口保留 | 本文件部署状态/本行；LOCAL_PREVIEW_UPDATE 最新实测、回退和证据；README/CHANGELOG/DEPLOYMENT 及两份验收指针 | 实际 App 源 `b7d29292c18aa30fa00e4aef9f33ca57663100ad`；本行证据另经文档 PR，不改包来源 | 已更新 `/Applications/墨析 OCR 工作台.app` 1.3.0(6)，隔离/正常重启验证后正常退出；未更换公开资产、未操作 Windows | 四主题/原始文本/文件框/合成导入/完整 ZIP/退出通过；367业务文件及5旧模型文件哈希不变；PR CI 39807735751/main CI 39809202219 成功；原生既有诊断未消除；临时合成目录可恢复清理 | 耐久备份 install-reader-fix/previous.app + installed-manifest.json，原 rollback 入口与新审计目录；只回退 App，不动数据 |
 | 2026-10-22 | 发布含阅读修复的 rc.2 双平台候选；记录新 DMG 原生及公开分发验收 | 代码/实包/原生证据/发行正文/公开分发/六文档独立复核；1项P2相对链接已修并复核关闭，末轮P0/P1/P2=0；正式验收边界保留 | 本文件状态/构建命令/文档路径/第11项退出及浏览器授权/本行；README、CHANGELOG、DEPLOYMENT、RC2_VALIDATION、rc.2发行说明 | 两包与tag源 `3e9a7e2ea2bc33fd58cafd33520a1928599a28c3`（PR #9）；本行证据另经文档PR，不改包源 | GitHub Pre-release已公开、非Latest；正常退出现有App后隔离启动/退出新DMG；未替换安装版、未安装Windows | PR CI39821165263/main CI39822054430成功；内置浏览器页面/四下载与独立公开回读通过、哈希相同；新DMG四主题/文件框/合成TXT/ZIP/退出通过，369业务/13managed模型/5legacy文件哈希不变；完整OCR/Windows仍未验 | 公开候选异常标撤回、保留tag/原包；现安装版不变无需App回滚；不改业务数据 |
 | 2026-10-23 | DeepSeek 技术交接、DS-00至DS-06工单与受控源码归档（准备阶段，最终验收见交付回执及对应PR评论） | 8份文档独立末轮P0/P1/P2=0；1项P2（不构建安装器与CI自动构建的口径冲突）已修并复核关闭；最终包另验 | 新增START_HERE-DEEPSEEK与handoff两文档；README/CHANGELOG/DEPLOYMENT；MLX合并证据；本文件文档路径/交接范围/MLX行/本行 | 文档主提交d4e5f8c68c5b2704e19ebdbe1ccc61491e80ef58；本行随后补充；功能基线352665b；最终打包SHA以Git archive注释及交付校验回执为准 | 仅交接源码；无应用部署/重启、无新Release、无模型或业务数据操作；既有CI测试artifact不作为发行 | 本机68 Python（5条既有SWIG告警）/lint/初始14文档链接/diff通过；本次PR/main CI及最终解压/逐文件/入口验收另随交付记录，不提前登记为通过 | 文档revert或修正PR后重导出新文件名；原App/公开包/业务数据未变，无应用回滚 |
+| 2026-10-23 | 多模型接口与并行扫描：接入 OpenAI 兼容视觉模型、按引擎并发调度、界面自助增删接口 | 两轮独立对抗 review：首轮 P0=0、7 项 P1；次轮新增 P0=1（上传中取消导致重复调度）与 3 项未闭环；已逐条修复并补 6 项回归测试，末轮 P0/P1=0 | README 新增“多模型接口与并行扫描”；CHANGELOG 新增条目；本文件多模型范围/本行 | 主题分支 feat/multi-model-parallel-scan；合并 SHA 见本 PR | 隔离源码服务真实验证；本机 App 安装见后续回填 | 130 Python / 11 Node / lint / 构建通过；真实浏览器两模型同时扫描（2页 5.4s、1页 1.6s）、自动分配峰值 3 路、单接口 3 并发 2.9s；Windows 与长文档未测 | revert PR；接口配置只在运行数据目录，删除接口即回退；安装后按 previous.app 回滚 App |

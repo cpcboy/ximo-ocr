@@ -23,11 +23,13 @@ class JobDispatcher:
         process: Callable[[str], None],
         max_parallel: int = 9,
         requeue_if: Callable[[str], bool] | None = None,
+        on_finished: Callable[[str], None] | None = None,
     ):
         self._resolve_engine = resolve_engine
         self._slots_for = slots_for
         self._process = process
         self._requeue_if = requeue_if
+        self._on_finished = on_finished
         self._max_parallel = max(1, int(max_parallel))
         self._condition = threading.Condition()
         self._pending: list[str] = []
@@ -101,6 +103,10 @@ class JobDispatcher:
         with self._condition:
             return list(self._pending)
 
+    def running_ids(self) -> list[str]:
+        with self._condition:
+            return list(self._running)
+
     def pending_engines(self) -> set[str]:
         """排队任务绑定的引擎，供“本机引擎是否真的空闲”判断使用。"""
         with self._condition:
@@ -165,10 +171,17 @@ class JobDispatcher:
         except Exception:
             logger.exception("Job %s crashed in dispatcher", job_id)
         finally:
-            # 任务收尾期间可能被“重试”重新排队；此时不重新入队会永久丢失。
-            requeue = bool(self._requeue_if and self._requeue_if(job_id))
             with self._condition:
                 self._running.pop(job_id, None)
-                if requeue and job_id not in self._pending:
-                    self._pending.append(job_id)
                 self._condition.notify_all()
+            # 先释放槽位，再判断是否需要重新入队/收尾，避免把自己算成“仍在运行”。
+            if self._requeue_if and self._requeue_if(job_id):
+                with self._condition:
+                    if job_id not in self._pending:
+                        self._pending.append(job_id)
+                    self._condition.notify_all()
+            if self._on_finished:
+                try:
+                    self._on_finished(job_id)
+                except Exception:
+                    logger.exception("Post-job hook failed for %s", job_id)

@@ -205,6 +205,56 @@ def test_canceling_job_is_not_restarted(api_client):
     assert latest["pages"] == []
 
 
+def test_queued_job_canceled_before_start_is_finalized(api_client):
+    """上传期间被取消、却仍写成 queued 的任务必须收尾，不能反复调度。"""
+    api = importlib.import_module("backend.app")
+    job = api.store.create(
+        filename="合成.txt",
+        content_type="text/plain",
+        options={},
+        engine_id="preset-4090",
+        engine_label="4090",
+    )
+    api.store.update(
+        job["id"],
+        status="queued",
+        cancel_requested=True,
+    )
+    assert api._job_was_requeued(job["id"]) is False
+    assert api._resolve_job_engine(job["id"]) is None
+
+    api._process_job(job["id"])
+
+    latest = api.store.get(job["id"])
+    assert latest["status"] == "canceled"
+
+
+def test_orphan_canceling_job_can_be_deleted(api_client):
+    api = importlib.import_module("backend.app")
+    job = api.store.create(
+        filename="合成.txt",
+        content_type="text/plain",
+        options={},
+        engine_id="preset-4090",
+        engine_label="4090",
+    )
+    api.store.update(job["id"], status="canceling", cancel_requested=True)
+    response = api_client.delete(f"/api/jobs/{job['id']}")
+    assert response.status_code == 204
+
+
+def test_changing_base_url_with_blank_key_drops_stored_key(api_client):
+    api = importlib.import_module("backend.app")
+    api.registry.update("preset-4090", {"api_key": "sk-stored"})
+    response = api_client.put(
+        "/api/models/endpoints/preset-4090",
+        json={"base_url": "http://127.0.0.1:9999/v1", "api_key": ""},
+    )
+    assert response.status_code == 200
+    assert api.registry.get("preset-4090")["api_key"] == ""
+    assert response.json()["api_key_set"] is False
+
+
 def test_direct_text_job_runs_to_completion(api_client):
     """文本文件不依赖模型，用来覆盖 queued→preparing→running→completed 全链路。"""
     api = importlib.import_module("backend.app")

@@ -10,6 +10,7 @@ import threading
 import time
 import urllib.parse
 import zipfile
+from collections.abc import Callable
 from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Any
@@ -65,6 +66,8 @@ dispatcher = JobDispatcher(
     process=lambda job_id: _run_job(job_id),
     max_parallel=GLOBAL_MAX_PARALLEL,
     requeue_if=lambda job_id: _job_was_requeued(job_id),
+    # 槽位释放后再判断能否卸载，否则自己仍算“运行中”，模型永远不会自动释放。
+    on_finished=lambda job_id: _unload_model_if_idle("任务队列已全部完成"),
 )
 model_loader_thread: threading.Thread | None = None
 client_monitor_stop = threading.Event()
@@ -114,20 +117,28 @@ def _engine_slots(engine_id: str) -> int:
 def _resolve_job_engine(job_id: str) -> str | None:
     """调度器取任务时确认它仍在排队；被取消或删除的任务直接丢弃。"""
     try:
-        job = store.get(job_id)
+        meta = store.peek(job_id)
     except KeyError:
         return None
-    if job.get("status") != "queued":
+    if meta["status"] != "queued" or meta["cancel_requested"]:
         return None
-    return str(job.get("engine_id") or LOCAL_ENGINE_ID)
+    return str(meta.get("engine_id") or LOCAL_ENGINE_ID)
 
 
 def _job_was_requeued(job_id: str) -> bool:
     """任务收尾窗口里被“重试”回队列时，调度器需要重新接手。"""
     try:
-        return store.get(job_id).get("status") == "queued"
+        meta = store.peek(job_id)
     except KeyError:
         return False
+    return meta["status"] == "queued" and not meta["cancel_requested"]
+
+
+def _job_cancel_requested(job_id: str) -> bool:
+    try:
+        return bool(store.peek(job_id)["cancel_requested"])
+    except KeyError:
+        return True
 
 
 def _local_jobs_active() -> bool:
@@ -187,7 +198,7 @@ def _scan_page_image(
     engine_id: str,
     image_path: Path,
     options: dict[str, Any],
-    should_cancel: Any = None,
+    should_cancel: Callable[[], bool] | None = None,
 ) -> tuple[str, dict[str, Any], str]:
     """按任务绑定的引擎识别一页；返回文字、诊断和引擎标识。"""
     if engine_id == LOCAL_ENGINE_ID:
@@ -556,7 +567,19 @@ def _process_job(job_id: str) -> None:
     begin_state = {"ok": False}
 
     def begin_run(data: dict[str, Any]) -> None:
-        if data.get("status") != "queued" or data.get("cancel_requested"):
+        if data.get("status") != "queued":
+            return
+        if data.get("cancel_requested"):
+            # 上传期间就被取消、但仍被写成 queued 的任务必须在这里收尾，否则会反复调度。
+            begin_state["ok"] = False
+            data.update(
+                {
+                    "status": "canceled",
+                    "stage": "任务已取消；没有开始识别",
+                    "progress": 0,
+                    "completed_at": utc_now(),
+                }
+            )
             return
         begin_state["ok"] = True
         data.update(
@@ -694,9 +717,7 @@ def _process_job(job_id: str) -> None:
                         engine_id,
                         image_path,
                         options,
-                        should_cancel=lambda: bool(
-                            store.get(job_id).get("cancel_requested")
-                        ),
+                        should_cancel=lambda: _job_cancel_requested(job_id),
                     )
                     page_kind = "ocr"
                 elapsed = round(time.monotonic() - page_started, 2)
@@ -823,10 +844,7 @@ def _process_job(job_id: str) -> None:
 
 
 def _run_job(job_id: str) -> None:
-    try:
-        _process_job(job_id)
-    finally:
-        _unload_model_if_idle("任务队列已全部完成")
+    _process_job(job_id)
 
 
 def _start_worker() -> None:
@@ -1011,18 +1029,41 @@ async def create_job(request: Request) -> dict[str, Any]:
                 writer.write(chunk)
         if received == 0:
             raise HTTPException(status_code=400, detail="上传的文件为空")
-        store.update(
-            job["id"],
-            size=received,
-            status="queued",
-            stage="文件已接收，等待处理",
-            progress=3,
-        )
+
+        def mark_uploaded(data: dict[str, Any]) -> None:
+            data["size"] = received
+            if data.get("cancel_requested") or data.get("status") in {
+                "canceling",
+                "canceled",
+            }:
+                # 上传期间用户已经取消：直接落到终态，不能写成 queued 再被反复调度。
+                data.update(
+                    {
+                        "status": "canceled",
+                        "stage": "任务在接收文件时被取消",
+                        "progress": 0,
+                        "completed_at": utc_now(),
+                        "cancel_requested": True,
+                    }
+                )
+                return
+            data.update(
+                {
+                    "status": "queued",
+                    "stage": "文件已接收，等待处理",
+                    "progress": 3,
+                }
+            )
+
+        store.mutate(job["id"], mark_uploaded)
+        updated = store.get(job["id"])
+        if updated["status"] != "queued":
+            return updated
         with model_operation_lock:
             if model_download.status().get("running"):
                 raise HTTPException(status_code=409, detail="模型正在下载或校验，请完成后再开始扫描")
             dispatcher.submit(job["id"])
-        return store.get(job["id"])
+        return updated
     except Exception:
         try:
             store.delete(job["id"])
@@ -1215,7 +1256,18 @@ def _retry_job_locked(job_id: str) -> dict[str, Any]:
 
 @app.delete("/api/jobs/{job_id}", status_code=204)
 def delete_job(job_id: str) -> Response:
-    _job_or_404(job_id)
+    job = _job_or_404(job_id)
+    busy_statuses = {"running", "preparing", "canceling"}
+    if job["status"] in busy_statuses:
+        if job_id in dispatcher.running_ids():
+            raise HTTPException(status_code=409, detail="任务仍在运行，不能删除")
+        # 上传中断或进程重启遗留的“取消中”任务没有 worker 接手，允许先收尾再删除。
+        store.update(
+            job_id,
+            status="canceled",
+            stage="任务已取消",
+            completed_at=utc_now(),
+        )
     try:
         dispatcher.forget(job_id)
         store.delete(job_id)
@@ -1399,19 +1451,22 @@ def update_endpoint(
     endpoint_id: str,
     payload: dict[str, Any] = Body(...),
 ) -> dict[str, Any]:
-    if payload.pop("clear_api_key", False):
-        payload = {**payload, "api_key": ""}
-    elif payload.get("api_key") == "":
-        payload = {**payload, "api_key": KEEP_KEY_SENTINEL}
+    clear_key = payload.pop("clear_api_key", False)
+    raw_key = payload.get("api_key")
+    has_new_key = bool(raw_key) and raw_key != KEEP_KEY_SENTINEL
     current = registry.get(endpoint_id)
-    if (
-        current is not None
-        and payload.get("base_url")
-        and "api_key" not in payload
-        and str(payload["base_url"]).rstrip("/") != current["base_url"]
-    ):
+    url_changed = False
+    if current is not None and payload.get("base_url"):
+        try:
+            candidate_url = normalize_base_url(payload["base_url"])
+        except EndpointValidationError:
+            candidate_url = None
+        url_changed = candidate_url is not None and candidate_url != current["base_url"]
+    if clear_key or (url_changed and not has_new_key):
         # 地址换了但没给新密钥：丢掉旧密钥，避免密钥被带到另一个主机。
         payload = {**payload, "api_key": ""}
+    elif raw_key == "":
+        payload = {**payload, "api_key": KEEP_KEY_SENTINEL}
     try:
         endpoint = registry.update(endpoint_id, payload)
     except KeyError as exc:

@@ -124,6 +124,19 @@ class JobStore:
                 raise KeyError(job_id)
             return copy.deepcopy(self._jobs[job_id])
 
+    def peek(self, job_id: str) -> dict[str, Any]:
+        """只取调度需要的少量字段，避免为每个排队任务深拷贝全部页面文本。"""
+        with self._lock:
+            self._validate_id(job_id)
+            job = self._jobs.get(job_id)
+            if job is None:
+                raise KeyError(job_id)
+            return {
+                "status": job.get("status"),
+                "engine_id": job.get("engine_id"),
+                "cancel_requested": bool(job.get("cancel_requested")),
+            }
+
     def mutate(
         self,
         job_id: str,
