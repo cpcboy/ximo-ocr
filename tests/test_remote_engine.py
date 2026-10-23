@@ -283,7 +283,9 @@ def test_unreachable_endpoint_fails_fast(monkeypatch):
     monkeypatch.setattr(remote_engine, "_opener", lambda url: FakeOpener([]))
     with pytest.raises(RemoteEngineError) as excinfo:
         remote_engine._ensure_reachable("http://127.0.0.1:1/v1", timeout=1)
-    assert "无法连接" in str(excinfo.value)
+    message = str(excinfo.value)
+    # 不同平台对“端口不可达”分别报拒绝或超时，但都必须是可读的失败原因。
+    assert "无法连接" in message or "超时" in message
 
 
 def test_cancelled_before_request_is_reported(tmp_path, monkeypatch):
