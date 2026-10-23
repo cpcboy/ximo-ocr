@@ -961,14 +961,21 @@ export default function Home() {
     setShowUpload(false);
     const requested = options.engine || LOCAL_ENGINE_ID;
     let cursor = engineCursor.current;
+    // 健康状态每 1.6 秒才刷新一次；批量上传时用本地计数避免同一批全压到一个引擎。
+    const assigned = new Map<string, number>();
     for (let index = 0; index < files.length; index += 1) {
       const file = files[index];
       setUploading(`正在上传 ${index + 1}/${files.length} · ${file.name}`);
       let engineId = requested;
       if (requested === AUTO_ENGINE_ID) {
-        const picked = pickEngine(autoEngines, cursor);
+        const adjusted = autoEngines.map((engine) => ({
+          ...engine,
+          running: engine.running + (assigned.get(engine.id) || 0),
+        }));
+        const picked = pickEngine(adjusted, cursor);
         engineId = picked.engineId;
         cursor = picked.nextCursor;
+        assigned.set(engineId, (assigned.get(engineId) || 0) + 1);
       }
       try {
         const job = await api<Job>("/api/jobs", {
@@ -1418,7 +1425,7 @@ export default function Home() {
                       </span>
                       {job.engine_label && (
                         <span className="engine-chip" title={job.engine_label}>
-                          {job.engine_label}
+                          {job.engine_label.split("·")[0].trim()}
                         </span>
                       )}
                       <span>{formatDate(job.created_at)}</span>
@@ -1492,8 +1499,12 @@ export default function Home() {
                 </div>
                 <div>
                   <span className="feature-icon"><ShieldCheck size={18} /></span>
-                  <strong>隐私留在本机</strong>
-                  <p>文件和识别结果不会发送到云端服务。</p>
+                  <strong>隐私默认留在本机</strong>
+                  <p>
+                    {remoteEnabled
+                      ? "只有选择远程接口时，当前页图像才会发送到该接口。"
+                      : "文件和识别结果不会发送到云端服务。"}
+                  </p>
                 </div>
               </div>
             </section>
