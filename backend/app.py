@@ -196,7 +196,7 @@ def _scan_page_image(
         max_length=options["max_length"],
         mode=options["mode"],
     )
-    return text, {"usage": usage}, engine_id
+    return text, {"usage": usage, "truncated": bool(usage.get("truncated"))}, engine_id
 
 
 def _unload_model_if_idle(reason: str) -> bool:
@@ -664,6 +664,7 @@ def _process_job(job_id: str) -> None:
                                 "repetition"
                             ),
                             "usage": diagnostics.get("usage"),
+                            "truncated": bool(diagnostics.get("truncated")),
                         }
                     )
 

@@ -170,6 +170,7 @@ type PageRecord = {
   elapsed_seconds: number;
   edited?: boolean;
   repetition_trimmed?: boolean;
+  truncated?: boolean;
   repetition_diagnostics?: Record<string, unknown> | null;
   reading_text?: string;
   reading_repair?: {
@@ -1737,6 +1738,14 @@ export default function Home() {
                         <strong>识别结果</strong>
                         {selectedPage?.edited && (
                           <span className="edited-badge">已校对</span>
+                        )}
+                        {selectedPage?.truncated && (
+                          <span
+                            className="edited-badge truncated-badge"
+                            title="模型输出达到本次上限，建议提高“最长输出”后重试本页"
+                          >
+                            输出达上限
+                          </span>
                         )}
                       </div>
                       <div className="result-actions">

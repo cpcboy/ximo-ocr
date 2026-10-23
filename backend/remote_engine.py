@@ -86,7 +86,7 @@ def _describe_http_error(error: urllib.error.HTTPError) -> str:
     return f"{base}（HTTP {error.code}）" + (f"：{detail}" if detail else "")
 
 
-def _extract_message(payload: dict[str, Any]) -> tuple[str, dict[str, Any]]:
+def _extract_message(payload: dict[str, Any]) -> tuple[str, dict[str, Any], str]:
     choices = payload.get("choices") or []
     if not choices:
         raise RemoteEngineError("接口没有返回识别结果（choices 为空）")
@@ -106,7 +106,7 @@ def _extract_message(payload: dict[str, Any]) -> tuple[str, dict[str, Any]]:
         if choice.get("finish_reason") == "length":
             reason = "输出长度达到上限，请提高“最长输出”或减少单页内容"
         raise RemoteEngineError(reason or "接口返回了空内容")
-    return text, dict(payload.get("usage") or {})
+    return text, dict(payload.get("usage") or {}), str(choice.get("finish_reason") or "")
 
 
 def _clean_result(text: str) -> str:
@@ -231,7 +231,9 @@ class RemoteEngine:
             body,
             timeout=float(self.endpoint.get("timeout_seconds") or 600),
         )
-        text, usage = _extract_message(payload)
+        text, usage, finish_reason = _extract_message(payload)
+        if finish_reason == "length":
+            usage = {**usage, "truncated": True}
         return _clean_result(text), usage
 
     def list_models(self, *, timeout: float = 15.0) -> list[str]:

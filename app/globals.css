@@ -3761,6 +3761,11 @@ a {
   padding: 1px 3px;
 }
 
+.truncated-badge {
+  background: var(--orange-soft);
+  color: var(--orange);
+}
+
 .settings-section .button-ghost {
   background: transparent;
   border: 1px solid var(--line-strong);
