@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import json
 import stat
+import sys
 from pathlib import Path
 
 import pytest
@@ -58,7 +59,9 @@ def test_create_persists_private_file_and_masks_key(tmp_path):
 
     path = registry.path
     assert path.exists()
-    assert stat.S_IMODE(path.stat().st_mode) == 0o600
+    if sys.platform != "win32":
+        # Windows 的 ACL 不通过 st_mode 表达，0600 只在 POSIX 上可断言。
+        assert stat.S_IMODE(path.stat().st_mode) == 0o600
     raw = json.loads(path.read_text("utf-8"))
     assert raw["endpoints"][-1]["api_key"] == "sk-local-secret"
 
