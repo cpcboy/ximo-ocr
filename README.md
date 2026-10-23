@@ -8,6 +8,9 @@
 [Releases](https://github.com/cpcboy/ximo-ocr/releases) 获取；没有发布的版本不能用本机候选构建替代。
 项目采用 [AGPL-3.0-only](LICENSE)，第三方许可见 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)。
 
+本机开发工作区迁移至 `~/cpcsoft/OCR`，后续从该目录打开项目；不再依赖 Downloads 下旧源码目录。
+迁移范围、虚拟环境路径和回滚见 [路径迁移说明](PATH_MIGRATION.md)。已安装 App 与其扫描/模型目录不变，旧交接 ZIP 保持原来源。
+
 准备交给 DeepSeek 或其他维护者时，先读 [接手入口](START_HERE-DEEPSEEK.md)、
 [详细技术交接](handoff/DEEPSEEK_HANDOFF.md) 和 [接手工单](handoff/WORK_ORDERS.md)。
 2026-10-23 交接只打包已合并源码/文档，不包含模型、扫描数据或凭据，不更新 App 或发布新安装包。
