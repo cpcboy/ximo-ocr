@@ -22,18 +22,18 @@ class JobDispatcher:
         slots_for: Callable[[str], int],
         process: Callable[[str], None],
         max_parallel: int = 9,
+        requeue_if: Callable[[str], bool] | None = None,
     ):
         self._resolve_engine = resolve_engine
         self._slots_for = slots_for
         self._process = process
+        self._requeue_if = requeue_if
         self._max_parallel = max(1, int(max_parallel))
         self._condition = threading.Condition()
         self._pending: list[str] = []
         self._running: dict[str, str] = {}
         self._stop = threading.Event()
         self._thread: threading.Thread | None = None
-        self._in_flight = 0
-        self._started_runs = 0
 
     # ---- 生命周期 ---------------------------------------------------------
 
@@ -101,6 +101,17 @@ class JobDispatcher:
         with self._condition:
             return list(self._pending)
 
+    def pending_engines(self) -> set[str]:
+        """排队任务绑定的引擎，供“本机引擎是否真的空闲”判断使用。"""
+        with self._condition:
+            pending = list(self._pending)
+        engines: set[str] = set()
+        for job_id in pending:
+            engine_id = self._resolve_engine(job_id)
+            if engine_id:
+                engines.add(engine_id)
+        return engines
+
     # ---- 调度 -------------------------------------------------------------
 
     def _loop(self) -> None:
@@ -140,8 +151,6 @@ class JobDispatcher:
                     continue
                 self._pending.remove(job_id)
                 self._running[job_id] = engine_id
-                self._in_flight += 1
-                self._started_runs += 1
             thread = threading.Thread(
                 target=self._run_job,
                 args=(job_id, engine_id),
@@ -156,7 +165,10 @@ class JobDispatcher:
         except Exception:
             logger.exception("Job %s crashed in dispatcher", job_id)
         finally:
+            # 任务收尾期间可能被“重试”重新排队；此时不重新入队会永久丢失。
+            requeue = bool(self._requeue_if and self._requeue_if(job_id))
             with self._condition:
                 self._running.pop(job_id, None)
-                self._in_flight = max(0, self._in_flight - 1)
+                if requeue and job_id not in self._pending:
+                    self._pending.append(job_id)
                 self._condition.notify_all()

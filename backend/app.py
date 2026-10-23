@@ -64,6 +64,7 @@ dispatcher = JobDispatcher(
     slots_for=lambda engine_id: _engine_slots(engine_id),
     process=lambda job_id: _run_job(job_id),
     max_parallel=GLOBAL_MAX_PARALLEL,
+    requeue_if=lambda job_id: _job_was_requeued(job_id),
 )
 model_loader_thread: threading.Thread | None = None
 client_monitor_stop = threading.Event()
@@ -121,6 +122,21 @@ def _resolve_job_engine(job_id: str) -> str | None:
     return str(job.get("engine_id") or LOCAL_ENGINE_ID)
 
 
+def _job_was_requeued(job_id: str) -> bool:
+    """任务收尾窗口里被“重试”回队列时，调度器需要重新接手。"""
+    try:
+        return store.get(job_id).get("status") == "queued"
+    except KeyError:
+        return False
+
+
+def _local_jobs_active() -> bool:
+    """只有本机 MLX 的任务才影响内存释放与模型下载，远程任务不应挡住它们。"""
+    if dispatcher.running_by_engine().get(LOCAL_ENGINE_ID):
+        return True
+    return LOCAL_ENGINE_ID in dispatcher.pending_engines()
+
+
 def _engine_catalog() -> list[dict[str, Any]]:
     running = dispatcher.running_by_engine()
     local_status = engine.status()
@@ -171,6 +187,7 @@ def _scan_page_image(
     engine_id: str,
     image_path: Path,
     options: dict[str, Any],
+    should_cancel: Any = None,
 ) -> tuple[str, dict[str, Any], str]:
     """按任务绑定的引擎识别一页；返回文字、诊断和引擎标识。"""
     if engine_id == LOCAL_ENGINE_ID:
@@ -195,12 +212,13 @@ def _scan_page_image(
         prompt=options["prompt"],
         max_length=options["max_length"],
         mode=options["mode"],
+        should_cancel=should_cancel,
     )
     return text, {"usage": usage, "truncated": bool(usage.get("truncated"))}, engine_id
 
 
 def _unload_model_if_idle(reason: str) -> bool:
-    if engine.busy or dispatcher.busy:
+    if engine.busy or _local_jobs_active():
         return False
     if not engine.status()["loaded"]:
         return False
@@ -534,27 +552,39 @@ def _process_job(job_id: str) -> None:
     engine_id = str(job.get("engine_id") or LOCAL_ENGINE_ID)
     engine_name = _engine_label(engine_id)
 
-    try:
-        store.update(
-            job_id,
-            status="preparing",
-            stage="正在拆分文件并生成页面预览",
-            progress=5,
-            started_at=utc_now(),
-            completed_at=None,
-            error=None,
-            cancel_requested=False,
-            engine_id=engine_id,
-            engine_label=engine_name,
-            pages=[],
-            warnings=[],
-            stats={
-                "total_pages": 0,
-                "completed_pages": 0,
-                "failed_pages": 0,
-                "elapsed_seconds": 0,
-            },
+    # 只有仍然是 queued 的任务才能进入 preparing；否则可能把用户刚提交的取消覆盖掉。
+    begin_state = {"ok": False}
+
+    def begin_run(data: dict[str, Any]) -> None:
+        if data.get("status") != "queued" or data.get("cancel_requested"):
+            return
+        begin_state["ok"] = True
+        data.update(
+            {
+                "status": "preparing",
+                "stage": "正在拆分文件并生成页面预览",
+                "progress": 5,
+                "started_at": utc_now(),
+                "completed_at": None,
+                "error": None,
+                "engine_id": engine_id,
+                "engine_label": engine_name,
+                "pages": [],
+                "warnings": [],
+                "stats": {
+                    "total_pages": 0,
+                    "completed_pages": 0,
+                    "failed_pages": 0,
+                    "elapsed_seconds": 0,
+                },
+            }
         )
+
+    try:
+        store.mutate(job_id, begin_run)
+        if not begin_state["ok"]:
+            logger.info("Job %s no longer queued; skipping dispatch", job_id)
+            return
         job = store.get(job_id)
         options = _default_options(job.get("options"))
         pages_dir = store.job_dir(job_id) / "pages"
@@ -586,20 +616,41 @@ def _process_job(job_id: str) -> None:
                     "_extracted_text": page.extracted_text,
                 }
             )
-        store.update(
-            job_id,
-            status="running",
-            stage=f"准备完成，共 {len(page_records)} 页",
-            progress=12,
-            pages=page_records,
-            warnings=prepared.warnings,
-            stats={
-                "total_pages": len(page_records),
-                "completed_pages": 0,
-                "failed_pages": 0,
-                "elapsed_seconds": 0,
-            },
-        )
+        cancelled_while_preparing = {"value": False}
+
+        def mark_prepared(data: dict[str, Any]) -> None:
+            if data.get("cancel_requested"):
+                cancelled_while_preparing["value"] = True
+                data.update(
+                    {
+                        "status": "canceled",
+                        "stage": "任务已取消；没有开始识别",
+                        "completed_at": utc_now(),
+                        "pages": page_records,
+                        "warnings": prepared.warnings,
+                    }
+                )
+                return
+            data.update(
+                {
+                    "status": "running",
+                    "stage": f"准备完成，共 {len(page_records)} 页",
+                    "progress": 12,
+                    "pages": page_records,
+                    "warnings": prepared.warnings,
+                    "stats": {
+                        "total_pages": len(page_records),
+                        "completed_pages": 0,
+                        "failed_pages": 0,
+                        "elapsed_seconds": 0,
+                    },
+                }
+            )
+
+        store.mutate(job_id, mark_prepared)
+        if cancelled_while_preparing["value"]:
+            _write_exports(job_id)
+            return
 
         completed_pages = 0
         failed_pages = 0
@@ -617,7 +668,8 @@ def _process_job(job_id: str) -> None:
                 return
 
             def mark_running(data: dict[str, Any]) -> None:
-                data["status"] = "running"
+                if not data.get("cancel_requested"):
+                    data["status"] = "running"
                 data["stage"] = (
                     f"{engine_name} · 正在识别第 {index + 1} / {total} 页"
                 )
@@ -642,6 +694,9 @@ def _process_job(job_id: str) -> None:
                         engine_id,
                         image_path,
                         options,
+                        should_cancel=lambda: bool(
+                            store.get(job_id).get("cancel_requested")
+                        ),
                     )
                     page_kind = "ocr"
                 elapsed = round(time.monotonic() - page_started, 2)
@@ -735,6 +790,10 @@ def _process_job(job_id: str) -> None:
     except Exception as exc:
         logger.exception("Job %s failed", job_id)
         try:
+            current_stats = store.get(job_id).get("stats") or {}
+        except Exception:
+            current_stats = {}
+        try:
             store.update(
                 job_id,
                 status="failed",
@@ -743,13 +802,24 @@ def _process_job(job_id: str) -> None:
                 completed_at=utc_now(),
                 error=f"{type(exc).__name__}: {exc}",
                 stats={
-                    **store.get(job_id).get("stats", {}),
+                    **current_stats,
                     "elapsed_seconds": round(time.monotonic() - started, 1),
                 },
             )
             _write_exports(job_id)
         except Exception:
             logger.exception("Unable to persist failure for job %s", job_id)
+            # 兜底：至少把状态改成 failed，避免任务永远停在 running。
+            try:
+                store.update(
+                    job_id,
+                    status="failed",
+                    stage="任务处理失败（细节未能写入）",
+                    completed_at=utc_now(),
+                    error=f"{type(exc).__name__}: {exc}",
+                )
+            except Exception:
+                logger.exception("Unable to mark job %s failed", job_id)
 
 
 def _run_job(job_id: str) -> None:
@@ -1273,7 +1343,7 @@ def load_model() -> JSONResponse:
 @app.post("/api/model/download", status_code=202)
 def download_model() -> JSONResponse:
     with model_operation_lock:
-        if (engine.busy or engine.status()["loaded"] or dispatcher.busy
+        if (engine.busy or engine.status()["loaded"] or _local_jobs_active()
                 or (model_loader_thread and model_loader_thread.is_alive())):
             raise HTTPException(status_code=409, detail="请等待任务结束并卸载模型后再下载或校验")
         try:
@@ -1333,6 +1403,15 @@ def update_endpoint(
         payload = {**payload, "api_key": ""}
     elif payload.get("api_key") == "":
         payload = {**payload, "api_key": KEEP_KEY_SENTINEL}
+    current = registry.get(endpoint_id)
+    if (
+        current is not None
+        and payload.get("base_url")
+        and "api_key" not in payload
+        and str(payload["base_url"]).rstrip("/") != current["base_url"]
+    ):
+        # 地址换了但没给新密钥：丢掉旧密钥，避免密钥被带到另一个主机。
+        payload = {**payload, "api_key": ""}
     try:
         endpoint = registry.update(endpoint_id, payload)
     except KeyError as exc:
@@ -1351,6 +1430,16 @@ def delete_endpoint(endpoint_id: str) -> Response:
             status_code=409,
             detail="这个接口仍有任务在运行，请等待完成后再删除",
         )
+    for job_id in dispatcher.pending_ids():
+        try:
+            pending_engine = store.get(job_id).get("engine_id")
+        except KeyError:
+            continue
+        if pending_engine == endpoint_id:
+            raise HTTPException(
+                status_code=409,
+                detail="这个接口还有排队中的任务，请先取消这些任务再删除",
+            )
     try:
         registry.delete(endpoint_id)
     except KeyError as exc:
@@ -1373,7 +1462,9 @@ def test_endpoint(
             candidate["base_url"] = normalize_base_url(payload["base_url"])
         except EndpointValidationError as exc:
             raise HTTPException(status_code=422, detail=str(exc)) from exc
-    if payload.get("api_key"):
+        # 换成另一个地址时绝不携带已保存的密钥，只有本次显式提交的才使用。
+        candidate["api_key"] = str(payload.get("api_key") or "").strip()
+    elif payload.get("api_key"):
         candidate["api_key"] = str(payload["api_key"]).strip()
     if payload.get("model"):
         candidate["model"] = str(payload["model"]).strip()

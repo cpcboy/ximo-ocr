@@ -167,3 +167,71 @@ def test_busy_reports_pending_and_running():
     finally:
         release.set()
         dispatcher.stop()
+
+
+def test_job_requeued_during_finish_window_runs_again():
+    """重试发生在任务收尾窗口时，不能被 submit 的幂等判断吞掉。"""
+    releases = {"first": threading.Event(), "second": threading.Event()}
+    runs: list[str] = []
+    state = {"queued": False}
+
+    def process(job_id: str) -> None:
+        runs.append(job_id)
+        key = "first" if len(runs) == 1 else "second"
+        releases[key].wait(2.0)
+
+    def requeue_if(_job_id: str) -> bool:
+        return state["queued"]
+
+    dispatcher = JobDispatcher(
+        resolve_engine=lambda _job_id: "a",
+        slots_for=lambda _engine_id: 1,
+        process=process,
+        max_parallel=4,
+        requeue_if=requeue_if,
+    )
+    dispatcher.start()
+    try:
+        dispatcher.submit("a:1")
+        assert wait_until(lambda: runs == ["a:1"])
+        # 模拟“任务还在收尾，用户点了重试”：状态回到 queued，但 submit 被幂等挡掉。
+        state["queued"] = True
+        dispatcher.submit("a:1")
+        releases["first"].set()
+        assert wait_until(lambda: len(runs) == 2, timeout=3)
+        state["queued"] = False
+        releases["second"].set()
+        assert wait_until(lambda: dispatcher.busy is False, timeout=3)
+    finally:
+        releases["first"].set()
+        releases["second"].set()
+        dispatcher.stop()
+
+
+def test_wake_applies_new_concurrency_limit():
+    """把接口并发从 1 调到 3 后，排队任务应立即补位。"""
+    slots = {"value": 1}
+    release = threading.Event()
+    processed: list[str] = []
+
+    def process(job_id: str) -> None:
+        release.wait(2.0)
+        processed.append(job_id)
+
+    dispatcher = JobDispatcher(
+        resolve_engine=lambda _job_id: "a",
+        slots_for=lambda _engine_id: slots["value"],
+        process=process,
+        max_parallel=9,
+    )
+    dispatcher.start()
+    try:
+        for index in range(3):
+            dispatcher.submit(f"a:{index}")
+        assert wait_until(lambda: dispatcher.running_count() == 1)
+        slots["value"] = 3
+        dispatcher.wake()
+        assert wait_until(lambda: dispatcher.running_count() == 3, timeout=3)
+    finally:
+        release.set()
+        dispatcher.stop()

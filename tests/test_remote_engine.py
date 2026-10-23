@@ -230,3 +230,68 @@ def test_missing_choices_is_reported(tmp_path, monkeypatch):
     with pytest.raises(RemoteEngineError) as excinfo:
         RemoteEngine(make_endpoint()).scan(image, prompt="x", max_length=4096)
     assert "choices" in str(excinfo.value)
+
+
+def test_provider_echoed_key_is_redacted(tmp_path, monkeypatch):
+    image = tmp_path / "page.png"
+    image.write_bytes(b"png")
+    error = urllib.error.HTTPError(
+        "http://127.0.0.1:18091/v1/chat/completions",
+        401,
+        "Unauthorized",
+        {},
+        io.BytesIO(
+            json.dumps(
+                {"error": {"message": "Incorrect API key provided: sk-test-1234567890"}}
+            ).encode()
+        ),
+    )
+    patch_opener(monkeypatch, FakeOpener([error]))
+    with pytest.raises(RemoteEngineError) as excinfo:
+        RemoteEngine(make_endpoint(api_key="sk-test-1234567890")).scan(
+            image, prompt="x", max_length=4096
+        )
+    message = str(excinfo.value)
+    assert "sk-test-1234567890" not in message
+    assert "***" in message
+
+
+def test_timeout_is_not_retried(tmp_path, monkeypatch):
+    image = tmp_path / "page.png"
+    image.write_bytes(b"png")
+    opener = patch_opener(monkeypatch, FakeOpener([TimeoutError("timed out")]))
+    with pytest.raises(RemoteEngineError) as excinfo:
+        RemoteEngine(make_endpoint()).scan(image, prompt="x", max_length=4096)
+    assert "超时" in str(excinfo.value)
+    assert len(opener.requests) == 1
+
+
+def test_cancelled_before_request_is_reported(tmp_path, monkeypatch):
+    image = tmp_path / "page.png"
+    image.write_bytes(b"png")
+    opener = patch_opener(monkeypatch, FakeOpener([]))
+    with pytest.raises(RemoteEngineError) as excinfo:
+        RemoteEngine(make_endpoint()).scan(
+            image, prompt="x", max_length=4096, should_cancel=lambda: True
+        )
+    assert "取消" in str(excinfo.value)
+    assert opener.requests == []
+
+
+def test_oversized_image_is_rejected(tmp_path, monkeypatch):
+    image = tmp_path / "page.png"
+    image.write_bytes(b"x" * 1024)
+    monkeypatch.setattr(remote_engine, "MAX_IMAGE_BYTES", 512)
+    patch_opener(monkeypatch, FakeOpener([]))
+    with pytest.raises(RemoteEngineError) as excinfo:
+        RemoteEngine(make_endpoint()).scan(image, prompt="x", max_length=4096)
+    assert "超过" in str(excinfo.value)
+
+
+def test_assistant_prefix_only_stripped_at_start(tmp_path, monkeypatch):
+    image = tmp_path / "page.png"
+    image.write_bytes(b"png")
+    body = "会议记录：Assistant: 是英文岗位名\n后续正文保留"
+    patch_opener(monkeypatch, FakeOpener([completion(body)]))
+    text, _ = RemoteEngine(make_endpoint()).scan(image, prompt="x", max_length=4096)
+    assert text == body

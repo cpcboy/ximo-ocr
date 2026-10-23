@@ -8,6 +8,7 @@
 from __future__ import annotations
 
 import json
+import logging
 import os
 import re
 import threading
@@ -16,6 +17,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 from urllib.parse import urlsplit
+
+logger = logging.getLogger("ocr-studio.model-registry")
 
 LOCAL_ENGINE_ID = "local"
 LOCAL_ENGINE_LABEL = "本机 MLX"
@@ -34,6 +37,17 @@ MAX_TIMEOUT_SECONDS = 1800
 DEFAULT_MAX_OUTPUT_TOKENS = 16384
 MIN_OUTPUT_TOKENS = 512
 MAX_OUTPUT_TOKENS = 24576
+
+UPDATABLE_FIELDS = {
+    "name",
+    "base_url",
+    "model",
+    "api_key",
+    "max_concurrency",
+    "timeout_seconds",
+    "max_output_tokens",
+    "enabled",
+}
 
 ENDPOINT_ID_PATTERN = re.compile(r"^[A-Za-z0-9_-]{1,64}$")
 
@@ -97,6 +111,16 @@ def _clamp_int(
     return number
 
 
+def _coerce_bool(value: Any) -> bool:
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, (int, float)):
+        return bool(value)
+    if isinstance(value, str):
+        return value.strip().lower() not in {"", "0", "false", "no", "off"}
+    return bool(value)
+
+
 def normalize_base_url(value: Any) -> str:
     text = _clean_text(value, field="接口地址", maximum=500).rstrip("/")
     parts = urlsplit(text)
@@ -132,17 +156,14 @@ class ModelEndpointRegistry:
     def _load(self) -> None:
         with self._lock:
             if not self._path.exists():
-                # 预设只在内存中提供；用户首次改动时才落盘，避免只读场景写文件。
-                self._endpoints = [
-                    self._normalize({**preset, "api_key": "", "enabled": True, "preset": True})
-                    for preset in PRESET_ENDPOINTS
-                ]
+                self._endpoints = self._preset_endpoints()
                 return
             try:
                 raw = json.loads(self._path.read_text("utf-8"))
             except (OSError, ValueError):
-                # 配置损坏时退回空列表，不覆盖原文件，等用户重新添加。
-                self._endpoints = []
+                # 配置损坏时保留原文件副本，并回退到预设，避免界面完全不可用。
+                self._quarantine_corrupt_file()
+                self._endpoints = self._preset_endpoints()
                 return
             endpoints: list[dict[str, Any]] = []
             for item in raw.get("endpoints", []):
@@ -152,6 +173,21 @@ class ModelEndpointRegistry:
                     continue
                 endpoints.append(endpoint)
             self._endpoints = endpoints
+
+    def _preset_endpoints(self) -> list[dict[str, Any]]:
+        return [
+            self._normalize({**preset, "api_key": "", "enabled": True, "preset": True})
+            for preset in PRESET_ENDPOINTS
+        ]
+
+    def _quarantine_corrupt_file(self) -> None:
+        try:
+            backup = self._path.with_suffix(self._path.suffix + ".corrupt")
+            if not backup.exists():
+                self._path.replace(backup)
+                os.chmod(backup, 0o600)
+        except OSError:
+            logger.warning("Unable to quarantine corrupt model config", exc_info=True)
 
     def _save(self) -> None:
         self._path.parent.mkdir(parents=True, exist_ok=True)
@@ -207,8 +243,8 @@ class ModelEndpointRegistry:
                 maximum=MAX_OUTPUT_TOKENS,
                 default=DEFAULT_MAX_OUTPUT_TOKENS,
             ),
-            "enabled": bool(item.get("enabled", True)),
-            "preset": bool(item.get("preset", False)),
+            "enabled": _coerce_bool(item.get("enabled", True)),
+            "preset": _coerce_bool(item.get("preset", False)),
             "created_at": str(item.get("created_at") or utc_now()),
             "updated_at": utc_now(),
         }
@@ -248,10 +284,15 @@ class ModelEndpointRegistry:
         with self._lock:
             index = self._next_index(endpoint_id)
             current = self._endpoints[index]
-            merged = {**current, **payload, "id": endpoint_id}
-            if "api_key" not in payload:
+            allowed = {
+                key: value
+                for key, value in payload.items()
+                if key in UPDATABLE_FIELDS
+            }
+            merged = {**current, **allowed, "id": endpoint_id}
+            if "api_key" not in allowed:
                 merged["api_key"] = current["api_key"]
-            elif payload.get("api_key") == KEEP_KEY_SENTINEL:
+            elif allowed.get("api_key") == KEEP_KEY_SENTINEL:
                 merged["api_key"] = current["api_key"]
             endpoint = self._normalize(merged)
             for other in self._endpoints:

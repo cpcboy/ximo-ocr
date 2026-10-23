@@ -14,7 +14,9 @@ import re
 import socket
 import time
 import urllib.error
+import urllib.parse
 import urllib.request
+from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
@@ -34,7 +36,10 @@ _FENCE_PATTERN = re.compile(
     r"^\s*```[A-Za-z0-9_-]*\s*\n(?P<body>.*?)\n?\s*```\s*$",
     re.DOTALL,
 )
+_SECRET_PATTERN = re.compile(r"sk-[A-Za-z0-9_\-]{8,}")
 _RETRYABLE_STATUS = {429, 500, 502, 503, 504}
+# 单页图像上限：超过后 Base64 请求体会过大，直接给出可操作提示。
+MAX_IMAGE_BYTES = 24 * 1024 * 1024
 
 
 class RemoteEngineError(RuntimeError):
@@ -45,6 +50,14 @@ class RemoteEngineError(RuntimeError):
         self.status = status
 
 
+def redact_secrets(text: str, api_key: str = "") -> str:
+    """错误信息可能被服务端回显密钥，落盘/打日志前统一脱敏。"""
+    scrubbed = text
+    if api_key and len(api_key) >= 6:
+        scrubbed = scrubbed.replace(api_key, "***")
+    return _SECRET_PATTERN.sub("sk-***", scrubbed)
+
+
 def _auth_headers(api_key: str) -> dict[str, str]:
     headers = {"Content-Type": "application/json"}
     if api_key:
@@ -52,13 +65,35 @@ def _auth_headers(api_key: str) -> dict[str, str]:
     return headers
 
 
+class _SameOriginRedirectHandler(urllib.request.HTTPRedirectHandler):
+    """跨站重定向时丢弃 Authorization，避免密钥被带到第三方主机。"""
+
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        new = super().redirect_request(req, fp, code, msg, headers, newurl)
+        if new is None:
+            return None
+        old_origin = urllib.parse.urlsplit(req.full_url)
+        new_origin = urllib.parse.urlsplit(newurl)
+        if (old_origin.scheme, old_origin.hostname, old_origin.port) != (
+            new_origin.scheme,
+            new_origin.hostname,
+            new_origin.port,
+        ):
+            new.remove_header("Authorization")
+            for key in list(new.headers):
+                if key.lower() == "authorization":
+                    new.headers.pop(key, None)
+        return new
+
+
 def _opener(url: str) -> urllib.request.OpenerDirector:
+    handlers: list[Any] = [_SameOriginRedirectHandler()]
     if is_loopback_url(url):
-        return urllib.request.build_opener(urllib.request.ProxyHandler({}))
-    return urllib.request.build_opener()
+        handlers.insert(0, urllib.request.ProxyHandler({}))
+    return urllib.request.build_opener(*handlers)
 
 
-def _describe_http_error(error: urllib.error.HTTPError) -> str:
+def _describe_http_error(error: urllib.error.HTTPError, api_key: str = "") -> str:
     detail = ""
     try:
         raw = error.read().decode("utf-8", "replace")
@@ -72,7 +107,7 @@ def _describe_http_error(error: urllib.error.HTTPError) -> str:
             detail = detail or str(parsed.get("detail") or "")
     except Exception:
         detail = ""
-    detail = detail.strip()[:300]
+    detail = redact_secrets(detail.strip()[:300], api_key)
     if error.code in {401, 403}:
         base = "接口拒绝了访问，请检查 API 密钥是否正确"
     elif error.code == 404:
@@ -114,8 +149,9 @@ def _clean_result(text: str) -> str:
     fenced = _FENCE_PATTERN.match(cleaned)
     if fenced:
         cleaned = fenced.group("body").strip()
-    if "Assistant:" in cleaned:
-        cleaned = cleaned.rsplit("Assistant:", 1)[-1].strip()
+    # 只处理“输出开头就是 Assistant:”的模板残留，避免把正文里的同名文字截掉。
+    if cleaned.startswith("Assistant:"):
+        cleaned = cleaned[len("Assistant:") :].strip()
     return cleaned
 
 
@@ -131,6 +167,12 @@ def build_prompt(prompt: str) -> str:
 
 
 def image_data_url(image_path: Path) -> str:
+    size = image_path.stat().st_size
+    if size > MAX_IMAGE_BYTES:
+        raise RemoteEngineError(
+            f"这一页的图像超过 {MAX_IMAGE_BYTES // 1024 // 1024} MB，"
+            "请降低扫描 DPI 或改用本机模型",
+        )
     raw = image_path.read_bytes()
     suffix = image_path.suffix.lower().lstrip(".") or "png"
     mime = "image/jpeg" if suffix in {"jpg", "jpeg"} else f"image/{suffix}"
@@ -158,13 +200,17 @@ class RemoteEngine:
         *,
         timeout: float,
         retries: int = 2,
+        should_cancel: Callable[[], bool] | None = None,
     ) -> dict[str, Any]:
         url = f"{str(self.endpoint['base_url']).rstrip('/')}{path}"
         data = json.dumps(body).encode("utf-8") if body is not None else None
-        headers = _auth_headers(str(self.endpoint.get("api_key") or ""))
+        api_key = str(self.endpoint.get("api_key") or "")
+        headers = _auth_headers(api_key)
         opener = _opener(url)
         last_error = "未知错误"
         for attempt in range(retries + 1):
+            if should_cancel and should_cancel():
+                raise RemoteEngineError("任务已取消")
             request = urllib.request.Request(
                 url,
                 data=data,
@@ -179,17 +225,24 @@ class RemoteEngine:
                     raise RemoteEngineError("接口返回了无法解析的内容")
                 return payload
             except urllib.error.HTTPError as error:
-                message = _describe_http_error(error)
+                message = _describe_http_error(error, api_key)
                 if error.code not in _RETRYABLE_STATUS or attempt >= retries:
                     raise RemoteEngineError(message, status=error.code) from error
                 last_error = message
-            except (urllib.error.URLError, socket.timeout, TimeoutError) as error:
-                reason = getattr(error, "reason", error)
+            except (socket.timeout, TimeoutError) as error:
+                # 超时不重试：单页已经等了一个完整超时，再重试只会继续占着并发槽。
+                raise RemoteEngineError(
+                    f"等待模型响应超时（{int(timeout)} 秒），请检查接口状态或调低并发"
+                ) from error
+            except urllib.error.URLError as error:
+                reason = redact_secrets(str(getattr(error, "reason", error)), api_key)
                 last_error = f"连接模型接口失败：{reason}"
                 if attempt >= retries:
                     raise RemoteEngineError(last_error) from error
             except json.JSONDecodeError as error:
                 raise RemoteEngineError("接口返回的不是合法 JSON") from error
+            if should_cancel and should_cancel():
+                raise RemoteEngineError("任务已取消")
             time.sleep(2 * (attempt + 1))
         raise RemoteEngineError(last_error)
 
@@ -200,6 +253,7 @@ class RemoteEngine:
         prompt: str,
         max_length: int,
         mode: str = "precision",
+        should_cancel: Callable[[], bool] | None = None,
     ) -> tuple[str, dict[str, Any]]:
         budget = int(max_length or 0)
         if budget <= 0:
@@ -230,6 +284,7 @@ class RemoteEngine:
             "/chat/completions",
             body,
             timeout=float(self.endpoint.get("timeout_seconds") or 600),
+            should_cancel=should_cancel,
         )
         text, usage, finish_reason = _extract_message(payload)
         if finish_reason == "length":

@@ -169,6 +169,30 @@ export function EngineSettings({
     }
   };
 
+  const testDraft = async () => {
+    if (!draft?.id) return;
+    setBusy("test-draft");
+    try {
+      const result = await request<{ message: string }>(
+        `/api/models/endpoints/${draft.id}/test`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            base_url: draft.base_url,
+            model: draft.model,
+            ...(draft.api_key ? { api_key: draft.api_key } : {}),
+          }),
+        },
+      );
+      notify(result.message, "success");
+    } catch (error) {
+      notify((error as Error).message, "error");
+    } finally {
+      setBusy(null);
+    }
+  };
+
   const test = async (endpoint: EngineEndpoint) => {
     setBusy(`test-${endpoint.id}`);
     try {
@@ -399,6 +423,21 @@ export function EngineSettings({
               )}
               读取模型列表
             </button>
+            {draft.id && (
+              <button
+                type="button"
+                className="button button-secondary"
+                onClick={() => void testDraft()}
+                disabled={busy === "test-draft"}
+              >
+                {busy === "test-draft" ? (
+                  <LoaderCircle className="spin" size={14} />
+                ) : (
+                  <Zap size={14} />
+                )}
+                测试这个配置
+              </button>
+            )}
             <button
               type="button"
               className="button button-primary"
@@ -425,7 +464,7 @@ export function EngineSettings({
           </div>
           <small className="engine-form-hint">
             接口需兼容 OpenAI <code>/chat/completions</code> 与图片输入。密钥只写入本机
-            0600 配置文件，不进入日志、Git 或安装包。
+            配置文件（macOS 权限 0600），不进入日志、Git 或安装包。
           </small>
         </div>
       ) : (

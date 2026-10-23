@@ -143,3 +143,85 @@ def test_discover_requires_valid_url(api_client):
         json={"base_url": "not-a-url"},
     )
     assert response.status_code == 422
+
+
+def test_scan_page_image_rejects_deleted_and_disabled_endpoints(api_client, tmp_path):
+    api = importlib.import_module("backend.app")
+    image = tmp_path / "page.png"
+    image.write_bytes(b"png")
+    options = {"prompt": "x", "mode": "precision", "max_length": 4096}
+
+    with pytest.raises(RuntimeError) as deleted:
+        api._scan_page_image("ep-missing", image, options)
+    assert "已被删除" in str(deleted.value)
+
+    api.registry.update("preset-4090", {"enabled": False})
+    with pytest.raises(RuntimeError) as disabled:
+        api._scan_page_image("preset-4090", image, options)
+    assert "已停用" in str(disabled.value)
+
+
+def test_test_endpoint_does_not_reuse_stored_key_for_new_url(api_client, monkeypatch):
+    api = importlib.import_module("backend.app")
+    captured = {}
+
+    class FakeRemote:
+        def __init__(self, endpoint):
+            captured.update(endpoint)
+
+        def list_models(self, timeout=15.0):
+            return ["m"]
+
+    seen = []
+    monkeypatch.setattr(api, "RemoteEngine", FakeRemote)
+    api.registry.update("preset-4090", {"api_key": "sk-stored-secret"})
+    response = api_client.post(
+        "/api/models/endpoints/preset-4090/test",
+        json={"base_url": "http://127.0.0.1:9999/v1"},
+    )
+    seen.append(captured.get("api_key"))
+    assert response.status_code == 200
+    assert seen == [""], "改为其它地址时不得携带已保存的密钥"
+
+
+def test_canceling_job_is_not_restarted(api_client):
+    api = importlib.import_module("backend.app")
+    job = api.store.create(
+        filename="合成.txt",
+        content_type="text/plain",
+        options={},
+        engine_id="preset-4090",
+        engine_label="4090",
+    )
+    api.store.update(
+        job["id"],
+        status="canceling",
+        cancel_requested=True,
+        pages=[],
+    )
+    api._process_job(job["id"])
+    latest = api.store.get(job["id"])
+    assert latest["status"] == "canceling"
+    assert latest["pages"] == []
+
+
+def test_direct_text_job_runs_to_completion(api_client):
+    """文本文件不依赖模型，用来覆盖 queued→preparing→running→completed 全链路。"""
+    api = importlib.import_module("backend.app")
+    job = api.store.create(
+        filename="合成.txt",
+        content_type="text/plain",
+        options={},
+        engine_id="preset-4090",
+        engine_label="4090",
+    )
+    source = api.store.job_dir(job["id"]) / job["source_file"]
+    source.write_text("第一行内容\n第二行内容", encoding="utf-8")
+    api.store.update(job["id"], status="queued", size=source.stat().st_size)
+
+    api._process_job(job["id"])
+
+    latest = api.store.get(job["id"])
+    assert latest["status"] == "completed"
+    assert "第一行内容" in latest["pages"][0]["text"]
+    assert latest["stats"]["elapsed_seconds"] >= 0

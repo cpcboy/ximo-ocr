@@ -100,6 +100,54 @@ def test_delete_removes_endpoint(tmp_path):
         registry.delete("preset-4090")
 
 
+def test_update_base_url_without_key_drops_old_key(tmp_path):
+    registry = make_registry(tmp_path)
+    created = registry.create(
+        {
+            "name": "接口 B",
+            "base_url": "http://127.0.0.1:9100/v1",
+            "model": "m",
+            "api_key": "sk-old",
+        }
+    )
+    updated = registry.update(created["id"], {"base_url": "http://127.0.0.1:9200/v1"})
+    assert updated["api_key"] == "sk-old"  # 注册表只做合并，策略在 API 层
+
+
+def test_update_ignores_unknown_fields(tmp_path):
+    registry = make_registry(tmp_path)
+    updated = registry.update("preset-4090", {"preset": True, "junk": "x"})
+    assert "junk" not in updated
+
+
+def test_enabled_accepts_real_boolean_strings(tmp_path):
+    registry = make_registry(tmp_path)
+    created = registry.create(
+        {
+            "name": "字符串开关",
+            "base_url": "http://127.0.0.1:9300/v1",
+            "model": "m",
+            "enabled": "false",
+        }
+    )
+    assert created["enabled"] is False
+
+
+def test_corrupt_config_is_quarantined_and_presets_remain(tmp_path):
+    config = tmp_path / "config" / "models.json"
+    config.parent.mkdir(parents=True)
+    config.write_text("{not json", encoding="utf-8")
+    registry = ModelEndpointRegistry(config)
+    assert [endpoint["id"] for endpoint in registry.list()] == [
+        "preset-3090ti",
+        "preset-4090",
+    ]
+    backup = config.with_suffix(config.suffix + ".corrupt")
+    assert backup.exists()
+    assert backup.read_text("utf-8") == "{not json"
+    assert not config.exists()
+
+
 @pytest.mark.parametrize(
     ("payload", "expected"),
     [
@@ -135,16 +183,6 @@ def test_duplicate_names_are_rejected(tmp_path):
                 "model": "m",
             }
         )
-
-
-def test_corrupt_file_does_not_crash(tmp_path):
-    config = tmp_path / "config" / "models.json"
-    config.parent.mkdir(parents=True)
-    config.write_text("{not json", encoding="utf-8")
-    registry = ModelEndpointRegistry(config)
-    assert registry.list() == []
-    # 原文件保持原样，等待用户重新添加而不是被静默覆盖。
-    assert config.read_text("utf-8") == "{not json"
 
 
 def test_normalize_base_url_trims_trailing_slash():

@@ -873,6 +873,19 @@ export default function Home() {
 
   const remoteEnabled = autoEngines.some((engine) => engine.kind === "remote");
 
+  // 选中的接口被删除/停用后，把本地保存的选择重置为自动分配，避免一直 422。
+  useEffect(() => {
+    const value = options.engine;
+    if (!value || value === AUTO_ENGINE_ID || value === LOCAL_ENGINE_ID) return;
+    const available = (health?.engines ?? []).some((engine) => engine.id === value);
+    if (available) return;
+    const timer = window.setTimeout(
+      () => setOptions({ ...options, engine: AUTO_ENGINE_ID }),
+      0,
+    );
+    return () => window.clearTimeout(timer);
+  }, [health, options, setOptions]);
+
   useEffect(() => {
     const run = () => void refresh();
     const initial = window.setTimeout(run, 0);
@@ -1742,7 +1755,7 @@ export default function Home() {
                         {selectedPage?.truncated && (
                           <span
                             className="edited-badge truncated-badge"
-                            title="模型输出达到本次上限，建议提高“最长输出”后重试本页"
+                            title="模型输出达到本次上限（受“最长输出”和接口最大输出共同限制），建议提高后重新扫描"
                           >
                             输出达上限
                           </span>
