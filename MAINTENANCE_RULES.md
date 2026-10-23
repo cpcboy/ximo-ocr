@@ -57,7 +57,7 @@ C. 所有业务数据只存数据库/对象存储，不落本地文件；本地�
 ### 项目与 Git 流程
 
 - 产品：墨析 OCR 工作台，本机桌面外壳 + Web 阅读/扫描界面 + Python OCR 后端。
-- 本机开发目录：用户于 2026-10-23 指定迁至 `~/cpcsoft/OCR`；执行门禁、路径例外及回滚见 `PATH_MIGRATION.md`，以迁移回执确认实际完成。
+- 本机开发目录：已按用户 2026-10-23 要求迁至 `~/cpcsoft/OCR`；执行门禁、路径例外、实际验收及回滚见 `PATH_MIGRATION.md`。
 - 唯一目标仓库：<https://github.com/cpcboy/ximo-ocr>。
 - 用户要求：后续任何改动先提交 PR 到该仓库，review、测试通过后合并，再从已合并版本发布生产；禁止直接修改生产来代替仓库变更。
 - 初次检查时本地及远端均无提交；已按授权创建空初始化 `af9c418`，维护文档 PR #1 已合并为 `8feb90175a46810a834ddd41904fe6c3808b3354`。不得把现有构建目录或运行数据当作源码首次提交。
@@ -177,6 +177,7 @@ Windows 的真实安装、杀毒软件扫描、首次下载、真实 OCR、退�
 
 | 日期 | 变更内容 | review 结论 | 文档更新 | commit | 部署 | 验证证据 | 回滚方式 |
 | --- | --- | --- | --- | --- | --- | --- | --- |
+| 2026-10-23 | 完成本机源码迁至 ~/cpcsoft/OCR；精确修复8个本机venv路径，回填证据 | 独立review两项P2（pymupdf漏项、审计根条目/权限）均关闭；最终证据/截图/ZIP及保护条目独立复算末轮P0/P1/P2=0 | PATH_MIGRATION实际验收；AGENTS/CHANGELOG/DEPLOYMENT/技术交接；本文件当前目录/本行 | 实测源PR #13合并6cb53be3b00fe9c517a23107e7b2ebd1d29e2e53；文档f13f2ef；本行后续证据PR不改实测源 | 仅迁移开发目录，重建源码网页并临时启停隔离服务；无App安装/重启、模型迁移或新发行 | 112696条目移动零差异；保护70091/旧dist3316条目零差异；68 Python/lint/构建11 Node；真实选TXT/阅读/ZIP/403/关闭断连/端口释放通过；App清单签名未变；PR/main CI成功，证据见PATH_MIGRATION | 保留 ~/cpcsoft/.ocr-migration-20261023 的8原件/全树清单/dist-before；无新写入时恢复环境并移回旧根；文档revert PR，不动安装版数据 |
 | 2026-10-23 | 准备将本机源码迁至 ~/cpcsoft/OCR，更新维护/交接路径；实际迁移以最终回执为准 | 方案漏列 pymupdf shebang 的 P2 已关闭；8文档及本机审计脚本独立末轮 P0/P1/P2=0 | 新增 PATH_MIGRATION；AGENTS/README/CHANGELOG/DEPLOYMENT/DeepSeek 入口及技术交接；本文件目录/文档路径/范围/本行 | 主题分支 chore/relocate-workspace；准确提交/合并 SHA 由本次 PR 及迁移回执记录 | 准备阶段未移动；仅源码目录迁移，无 App/模型/Release 更新 | 本机68 Python（5旧SWIG告警）、lint、8文档46本地链接和diff检查通过；PR/main CI、迁移全树核对与隔离浏览器结果另留证 | 保留8文件原件和全树清单，核对无新写入后移回旧根；文档修正/revert PR，不动安装版数据 |
 | 2026-10-22 | Apple Silicon MLX 闲置缓存软阈值回收；权重与生成算法不变 | 独立代码/基准/网页证据/文档末轮P0/P1/P2=0；实验工具3项P2、CI编码、最终计时表述P2已修复复核 | 本文件专项测试/文档路径/优化范围/本行；README、CHANGELOG、DEPLOYMENT；新增 MLX_PERFORMANCE 实测/源码溯源/真实浏览器章节 | 优化 d501ffde54f6d7c07dfd8a3e84be8142048b7183；编码 d23aa16033aa0a602d2977fab23fe647ebc11ec0；PR #11 合并352665be7f147474af1cf93f522958e3972cb052；2026-10-23交接复核最终PR/main CI成功 | 未部署/未重启现安装 App，不发布新包；只启动并退出隔离源码前后端 | 本机68 Python、lint、构建+11 Node；最终PR CI39843033560/main CI39843742424 Linux/Windows通过；五图20次10对完整输出相同，本次累计耗时减少38.16%/峰值不变；真实批量选图/OCR/阅读/ZIP/自动卸载、403及退出释放通过，临时合成任务已可恢复清理，详见MLX_PERFORMANCE | 未部署无需App回滚；源码revert PR，未来安装使用独立previous.app审计备份，不动业务数据 |
 | 2026-10-22 | 按第 11 项授权准备将阅读修复打入 rc.2 两平台新候选；旧批次保留 | 代码独立 review 新增 P0/P1/P2=0；后续文档/实包另审 | 本文件第 11 项/本行；README、CHANGELOG、DEPLOYMENT、Windows说明；新增 rc.2 发行与验收说明 | 准备 `31f9d7659964fb8c83b93976e5a5fc796f4a6cf6`；PR #9 合并 `3e9a7e2ea2bc33fd58cafd33520a1928599a28c3` | 本行为准备阶段历史，实际发布见表末新行；本机 App/数据不变 | 57 Python、lint、构建+11 Node；旧构建备份签名/包哈希回读通过，PR/main CI 后续成功 | 新候选异常停止公开/标撤回保留原包，源码 revert PR；不回滚业务数据 |
