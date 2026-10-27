@@ -1,5 +1,12 @@
 # 变更记录
 
+## 1.3.0-rc.3 — Mac 2.0 候选发布准备（2026-10-27）
+
+- 用户确认只发布 Mac 2.0 候选安装包，非正式版、非 Latest；本机已安装1.3.0(8)及业务数据不动，不操作Windows设备。
+- Mac build提升为9，DMG独立命名为`MoxiOCR-macOS-arm64-1.3.0-rc.3.dmg`；新增对应版本契约，Windows脚本/版本仍保持rc.2。OCR逻辑、固定BF16模型、权限和数据口径无新改动。
+- 发行只附DMG及SHA-256，不附模型权重、扫描/笔记/接口配置、私有日志或回退备份；保留所有旧tag和资产，不覆盖历史。
+- 三文件代码独立review新增P0/P1/P2=0，两个定向版本测试通过。PR/CI/合并、新包原生验收及公开下载仍待本批次执行，不以此前本机2.0成功代替。限制、签名状态及实际结果见 [RC3_VALIDATION.md](RC3_VALIDATION.md) 和 [候选说明](RELEASE_CANDIDATE_v1.3.0-rc.3.md)。
+
 ## 2026-10-27 — Unlimited-OCR 2.0 Mac 本机预览（非公开发行）
 
 - Mac 默认模型改为固定修订的 `mlx-community/Unlimited-OCR-2-bf16`，保持 BF16、不量化；旧 1.0 模型/数据原位保留，Windows 模型不变。Mac App build 8，未新增 DMG/EXE 或 Release。
