@@ -81,7 +81,7 @@ portable运行时在离线模式完成六张图：英文段落、表格、布局
 
 ## 尚待执行的门禁
 
-PR为[#17](https://github.com/cpcboy/ximo-ocr/pull/17)。首轮CI40548974108在Linux/Windows收集Mac可选数值测试时失败：NumPy在MLX跳过判断前导入。最小修正把NumPy导入放到MLX判断后，Mac14项数值门禁复跑通过；不改变容差、不安装无关AI依赖到非Mac CI。后续CI重跑成功前不合并，首次失败保留审计。
+PR为[#17](https://github.com/cpcboy/ximo-ocr/pull/17)。首轮CI40548974108在Linux收集Mac可选数值测试时失败：NumPy在MLX跳过判断前导入；同批Windows被矩阵fail-fast取消，并非已证明Windows相同报错。最小修正把NumPy导入放到MLX判断后，Mac14项数值门禁复跑通过；不改变容差、不安装无关AI依赖到非Mac CI。后续CI重跑成功前不合并，首次失败保留审计。
 
 1. 文档独立review、PR/CI/合并，记录真实提交/合并SHA。
 2. 干净合并源构建MacApp；新App原生窗口、系统选文件、OCR、阅读、ZIP系统保存框与退出验证。
