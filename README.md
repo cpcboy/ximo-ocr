@@ -1,7 +1,7 @@
 # 墨析 · 本地 OCR 工作台
 
 这是为 Unlimited-OCR 制作的本机网页工作台。当前源码的 Apple Silicon macOS 版使用
-`mlx-community/Unlimited-OCR-2-bf16`（2.0 本机预览）；Windows 安装版仍使用官方
+`mlx-community/Unlimited-OCR-2-bf16`（2.0 候选预览）；Windows 安装版仍使用官方
 `baidu/Unlimited-OCR` PyTorch 模型。文件、页面预览和识别结果都保存在本机；
 默认不调用外部 OCR 接口，也可以按需接入自己的 OpenAI 兼容模型接口（见下文“多模型接口与并行扫描”）。
 
@@ -21,7 +21,7 @@
 
 ## 开始使用
 
-2026-10-27 正在准备 **v1.3.0-rc.3：仅 Mac 的 Unlimited-OCR 2.0 候选包**，不设为正式版或 Latest，不再次更新本机，不发布新的 Windows 包。rc.3 为 Apple Silicon/macOS 14+，App 内为1.3.0(9)，模型由用户安装后在应用内另行下载，不随DMG提供。实际发布状态、包源、哈希和下载验收见 [rc.3 验证记录](RC3_VALIDATION.md)；未公开前仍以以下rc.2为当前公开发行。
+2026-10-27 已公开 [**v1.3.0-rc.3：仅 Mac 的 Unlimited-OCR 2.0 候选包**](https://github.com/cpcboy/ximo-ocr/releases/tag/v1.3.0-rc.3)，标为Pre-release、非正式版、非Latest；未再次更新本机，也未发布Windows新包。rc.3为Apple Silicon/macOS 14+，App内为1.3.0(9)，模型由用户安装后在应用内另行下载，不随DMG提供。新DMG原生OCR/阅读/ZIP/卸载、真实内置浏览器两附件下载及独立公开回读校验通过。包源为PR #19合并`ee808f671712e8795c89a4d4f1c1d3f6d6287115`；哈希、三类非阻断诊断及未公证/未验范围见 [rc.3 验证记录](RC3_VALIDATION.md)。Windows继续使用下方rc.2，不把Mac验收扩大到Windows。
 
 2026-10-27 已按用户授权将本机 Mac 更新为 **1.3.0(8) / Unlimited-OCR 2.0 BF16 预览**，App 来源为 PR #17 合并 `cfb7c929266fe43c352ae9aadf84b021d675010b`。原生选文件、OCR、阅读搜索、完整包导出和自动卸载已通过；原4条任务、扫描/笔记/接口设置及两处1.0模型逐项保全。新建扫描选择“本机 MLX · 串行”即可使用2.0，无需再下载。上述本机升级批次没有发布安装器或更新Windows；当前追加的Mac分发见上一段。两条非阻断退出/系统诊断、验证范围和已校验回退点见 [2.0 验证记录](UNLIMITED_OCR2_VALIDATION.md)。公开 rc.2 仍是旧模型版本。
 
@@ -63,7 +63,7 @@ Apple Silicon 安装版内置 MLX，使用 Metal GPU；无需额外安装 MLX �
 
 | 平台 | 程序选择的模型 | 要求 |
 | --- | --- | --- |
-| Apple Silicon Mac（当前源码/2.0 本机预览） | [mlx-community/Unlimited-OCR-2-bf16](https://huggingface.co/mlx-community/Unlimited-OCR-2-bf16) | M 系列芯片、macOS 14+；App 内含独立 Python/MLX/Node。固定修订 850d1e48…，11 文件共 6,690,229,659 字节；升级保留旧模型，除现有空间外还需新模型和 App/备份空间。 |
+| Apple Silicon Mac（当前源码/rc.3 候选） | [mlx-community/Unlimited-OCR-2-bf16](https://huggingface.co/mlx-community/Unlimited-OCR-2-bf16) | M 系列芯片、macOS 14+；App 内含独立 Python/MLX/Node。固定修订 850d1e48…，11 文件共 6,690,229,659 字节；升级保留旧模型，除现有空间外还需新模型和 App/备份空间。 |
 | Windows x64 | [baidu/Unlimited-OCR](https://huggingface.co/baidu/Unlimited-OCR) | NVIDIA GPU 和兼容 CUDA 12.8 的驱动；另下载 PyTorch 等推理组件，建议至少 18 GB 空闲磁盘。Apple MLX 不支持 Windows。 |
 
 - 下载由用户主动点击，不随启动自动下载。界面显示进度、文件名、保存目录和固定修订。
