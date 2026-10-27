@@ -1,5 +1,19 @@
 # 构建、发布与回滚
 
+## 2026-10-27 rc.3：仅 Mac 2.0 候选分发（本批次）
+
+用户确认仅发布Mac 2.0候选安装包，非正式、非Latest，不再次更新本机或操作Windows。只改Mac打包标识、版本测试及发布文档，不改OCR逻辑、模型清单或权限。状态见 [RC3_VALIDATION.md](RC3_VALIDATION.md)，对外说明见 [rc.3候选说明](RELEASE_CANDIDATE_v1.3.0-rc.3.md)。以下为发布流程，具体通过以实测记录为准。
+
+1. 在独立worktree完成自查、独立review、文档、PR和双平台CI；合并后等main CI成功，核对clean `HEAD == origin/main`。Mac App为1.3.0(9)，Windows仍rc.2；CI的Windows测试artifact不作为本次发行。
+2. 构建前将该worktree旧build8 App保全到新的`~/cpcsoft/OCR/.maintenance-backups/2026-10-27-rc3/prebuild/`，逐项核对来源、清单和签名。现安装版/受保护数据及三处模型目录建立只读内容/类型/权限清单；复核当前安装与上一批清单无漂移。旧公开包不受新worktree构建影响，不移动/覆盖。
+3. 执行既有`./mac-app/build-installer.sh`，只生成`build/macos/output/MoxiOCR-macOS-arm64-1.3.0-rc.3.dmg`及`.sha256`。同名存在就停止，不删文件重新打包。核对DMG、签名、真实`SOURCE_COMMIT`、前端来源、固定运行时和许可；排除模型权重、用户数据、凭据、日志、测试环境。
+4. 只读挂载新DMG，正常隔离运行其中App，使用全新support/data目录和既有已校验隔离2.0模型，不改全局环境；无模型提示、系统选文件、合成图片/PDF OCR、阅读、系统保存ZIP和退出须真实验证。3000/18765须空闲；若用户App运行，停止并先确认正常退出，不强占端口。保留两项既有非阻断诊断，不屏蔽或把它们记为已修复；新增关键路径失败即不发布。退出后核对安装版/数据/模型不变，卸载DMG。
+5. 新包/证据/发行正文独立review后，确认无同名远端tag或Release；若存在先读取恢复流程，不重复创建或覆盖。用`gh release create v1.3.0-rc.3 <DMG绝对路径> <SHA256绝对路径> --repo cpcboy/ximo-ocr --target <实际合并包源完整SHA> --draft --prerelease --latest=false --notes-file <已核验正文>`建草稿。尖括号必须换成实测值，不可原样执行。正文附真实包源、两资产大小/哈希与未验边界，文档链接用GitHub完整URL。
+6. 草稿仅上述两资产，服务端digest/size与本机一致，tag（如已生成）须解析到真实包源；确认后`gh release edit v1.3.0-rc.3 --repo cpcboy/ximo-ocr --draft=false --prerelease --latest=false`。不移动旧tag、不使用clobber、不上传Windows包。
+7. 发布后真实浏览器看Pre-release/限制说明并点击DMG和校验文件下载，独立公开回读同一资产，核对字节数/SHA-256/tag/非Latest。任何浏览器/系统拦截不绕过、不登记通过。实际证据经独立review和后续文档PR回填，不把后续文档SHA冒充包源。
+
+回退：草稿验证失败则保持不公开。已公开后若来源、哈希、关键路径或发布标识错误，先醒目标记撤回/请勿安装，保留候选/非Latest及原tag/包作审计，修复走新PR和新候选，不覆盖历史。只做分发，**本批次无需回滚或重装本机App**；旧rc.2仍保留，但它不含2.0，不能把退回rc.2说成保留2.0。已有本机build8回退方案仍见下节，不因发布自动执行。
+
 ## 2026-10-27 Unlimited-OCR 2.0 本机升级（本批次）
 
 用户批准 BF16 隔离测试通过后更新本机，允许正常退出，并确认数字安全去重口径。只构建/安装 Mac App 1.3.0(8)，**不调用安装器/Release 发布入口、不安装 Windows**。来源、阶段状态和证据见 [UNLIMITED_OCR2_VALIDATION.md](UNLIMITED_OCR2_VALIDATION.md)。本批次已从 PR #17 合并 `cfb7c929266fe43c352ae9aadf84b021d675010b` 完成构建、候选原生验收、备份安装及安装后复验；PR/main CI均成功。下列步骤保留执行口径，**`install-v2/`已存在，不得重复执行该安装命令**。
@@ -173,7 +187,7 @@ node scripts/build_identity.mjs --require-release
 ./mac-app/build-installer.sh
 ```
 
-DMG 入口再次检查 clean + `origin/main`，重建前端、打包、临时签名、验证 DMG，当前输出 `build/macos/output/MoxiOCR-macOS-arm64-1.3.0-rc.2.dmg` 及 `.sha256`（本批次已生成，勿重复覆盖）。旧 rc.1 文件名仅用于历史记录。
+DMG 入口再次检查 clean + `origin/main`，重建前端、打包、临时签名、验证 DMG，当前源码输出 `build/macos/output/MoxiOCR-macOS-arm64-1.3.0-rc.3.dmg` 及 `.sha256`；本批次是否已生成以RC3_VALIDATION为准，同名存在禁止覆盖。rc.1/rc.2文件名仅用于历史批次，不重新生成旧发行名。
 Mac 为 ad-hoc 签名，尚无 Developer ID 公证；Windows 也未做商业代码签名。不得宣称已通过 Gatekeeper、SmartScreen 或目标杀毒软件验收，不建议关闭防护或添加排除。
 
 ## 更新本机 Mac（仅 App，不动扫描数据）

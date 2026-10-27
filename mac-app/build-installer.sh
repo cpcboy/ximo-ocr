@@ -3,7 +3,7 @@ set -euo pipefail
 project_dir="$(cd "$(dirname "$0")/.." && pwd)"
 version="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$project_dir/mac-app/Info.plist")"
 output="$project_dir/build/macos/output"
-destination="$output/MoxiOCR-macOS-arm64-$version-rc.2.dmg"
+destination="$output/MoxiOCR-macOS-arm64-$version-rc.3.dmg"
 [[ ! -e "$destination" ]] || { echo "请先归档旧安装包：$destination" >&2; exit 1; }
 node "$project_dir/scripts/build_identity.mjs" --require-release
 (cd "$project_dir" && npm run build)

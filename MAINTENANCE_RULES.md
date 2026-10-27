@@ -1,6 +1,6 @@
 # 墨析 OCR 工作台维护铁律
 
-状态：维护规范正式启用。公开发行仍为第11项的 v1.3.0-rc.2 候选，非正式版、非 Latest。2026-10-27 已按追加授权备份更新本机为 1.3.0(8) / Unlimited-OCR 2.0 BF16 预览，实际App源为PR #17合并cfb7c929；保留1.0与全部数据，不发布新安装器。原生与安装版路径、保全证据、两项非阻断P2观察见 UNLIMITED_OCR2_VALIDATION.md。2026-10-23的afc73d5 / 1.3.0(7)已保留为本次回退备份；历史批次条目不作为新的部署授权。
+状态：维护规范正式启用。当前公开发行仍为第11项的 v1.3.0-rc.2 候选，非正式版、非 Latest。2026-10-27本机已按追加授权更新为1.3.0(8) / 2.0 BF16，实际App源为PR #17合并cfb7c929；保留1.0和全部数据。用户现又确认**仅发布Mac 2.0候选安装包**，准备独立rc.3，不再次更新本机、不发Windows新包；最新发布状态见RC3_VALIDATION。前次本机验收及两项P2观察见UNLIMITED_OCR2_VALIDATION。历史批次条目不作为新的部署授权。
 
 ## 用户原文
 
@@ -95,7 +95,7 @@ Windows 的真实安装、杀毒软件扫描、首次下载、真实 OCR、退�
 | --- | --- | --- |
 | 网页 | `npm run build` | `dist/standalone/`。 |
 | Mac 应用 | `./mac-app/build-app.sh` | `build/macos/墨析 OCR 工作台.app`；须先构建网页。1.3.0 改为校验固定便携 Python/Node，运行时依赖内置；最低 macOS 14、Apple Silicon。不能以构建替代干净机器验收。 |
-| Mac DMG | `./mac-app/build-installer.sh` | 仅接受已合并到 `origin/main` 的干净源码；当前输出 `build/macos/output/MoxiOCR-macOS-arm64-1.3.0-rc.2.dmg` 及 SHA-256。本批次已从 PR #9 合并源生成并原生隔离验证，见 RC2_VALIDATION.md；历史rc.1见CANDIDATE_DELIVERY.md，禁止覆盖旧包。 |
+| Mac DMG | `./mac-app/build-installer.sh` | 仅接受已合并到 `origin/main` 的干净源码；当前源码输出 `build/macos/output/MoxiOCR-macOS-arm64-1.3.0-rc.3.dmg` 及 SHA-256，本批次进度见RC3_VALIDATION。rc.2历史实测见RC2_VALIDATION；禁止覆盖旧包或沿用旧包SHA。 |
 | Windows 安装包（在 Mac 构建） | `./windows/build-installer.sh` | `build/windows/output/` 下 EXE 和 SHA-256；需已构建网页及 NSIS。 |
 | Windows 安装包（在 Windows PowerShell 构建） | `.\windows\build-installer.ps1` | 来源于已有 Windows 交接文档；完整构建和干净机器兼容性须本次复验。不自行修改或绕过执行策略。 |
 
@@ -125,7 +125,7 @@ Windows 的真实安装、杀毒软件扫描、首次下载、真实 OCR、退�
 - 阶段候选交接：`CANDIDATE_DELIVERY.md`，含实际源码 SHA、包哈希、验证证据、未完成项与生产状态。
 - 候选预览发行说明：`RELEASE_CANDIDATE_v1.3.0-rc.1.md`；仅供 GitHub Pre-release 分发，不替代完整验收。
 - 本机候选更新与数据保全记录：`LOCAL_PREVIEW_UPDATE.md`，区分更新计划、实际部署及验收结果。
-- 当前候选分发：`RELEASE_CANDIDATE_v1.3.0-rc.2.md`、`RC2_VALIDATION.md`；含实际来源、包哈希、原生/公开验证边界，不替代正式验收。
+- 当前公开候选分发：`RELEASE_CANDIDATE_v1.3.0-rc.2.md`、`RC2_VALIDATION.md`；本次仅Mac rc.3准备与实测记录：`RELEASE_CANDIDATE_v1.3.0-rc.3.md`、`RC3_VALIDATION.md`。各批次来源/哈希/验证独立，不替代正式验收。
 - MLX 无损调度研究与性能/输出一致性、浏览器、部署状态：`MLX_PERFORMANCE.md`。
 - Unlimited-OCR 2.0 Mac 本机预览的来源、数值/真实 OCR、安装状态、数据保全与回退：`UNLIMITED_OCR2_VALIDATION.md`。
 - DeepSeek 交接入口：`START_HERE-DEEPSEEK.md`；技术说明及有验收条件的工单：`handoff/DEEPSEEK_HANDOFF.md`、`handoff/WORK_ORDERS.md`。接手默认只做 DS-00，不延续历史单次部署授权。
@@ -201,6 +201,14 @@ Windows 的真实安装、杀毒软件扫描、首次下载、真实 OCR、退�
 
 验证只用合成图/PDF和独立数据/support目录，明确选择本机 MLX，不调用用户远程模型或复制接口密钥。先确认4个旧任务终态并正常退出，再保存旧 App、数据/两处旧模型的 hash/权限清单。合并后从干净源码构建，先原生隔离验收，再按 DEPLOYMENT 的原部署器更新；安装后仅正常首页只读检查，不打开历史阅读器或重扫。任一门禁失败则停止或 App-only 回退，不能修业务数据来掩盖。
 
+### 本次 Mac 2.0 候选分发范围（2026-10-27 追加确认）
+
+用户在本机2.0升级完成后要求“发布”，并明确选择“仅发布Mac 2.0候选安装包（推荐）”，保持候选/非正式/非Latest，不再次更新本机，也不操作Windows电脑。本项仅追加公开分发授权，替代上一批“暂不发新包”的Mac分发限制；不扩大为正式版、Windows2.0或本机再次部署。
+
+本次发行`v1.3.0-rc.3`，只上传Apple Silicon的DMG及其SHA-256；Mac内部1.3.0(9)，Windows脚本/版本仍rc.2，不上传Windows新包，既有CI临时Windows artifact不等于发行。模型不打包，只提供固定2.0下载入口；扫描/笔记/API配置/日志/备份不入Git或Release。
+
+先review/文档/PR/CI/合并，再归档旧构建并从clean main打包，真实挂载DMG做隔离合成验收；只用现有已校验隔离模型，不触发生产模型下载或用户任务。用户App如重新运行需先确认退出，不能自动终止。包源/tag/资产hash一致，候选/非Latest，公开后必须真实浏览器下载验收和独立回读；保留两项已有P2诊断和未公证/未验范围，不绕过安全拦截。任何关键路径失败停止公开或标记撤回，保留旧tag/资产，源码通过新PR修复。已装build8及所有数据/模型不变；实际结果另经证据PR回填。
+
 ## 变更执行记录
 
 | 日期 | 变更内容 | review 结论 | 文档更新 | commit | 部署 | 验证证据 | 回滚方式 |
@@ -222,3 +230,4 @@ Windows 的真实安装、杀毒软件扫描、首次下载、真实 OCR、退�
 | 2026-10-23 | DeepSeek 技术交接、DS-00至DS-06工单与受控源码归档（准备阶段，最终验收见交付回执及对应PR评论） | 8份文档独立末轮P0/P1/P2=0；1项P2（不构建安装器与CI自动构建的口径冲突）已修并复核关闭；最终包另验 | 新增START_HERE-DEEPSEEK与handoff两文档；README/CHANGELOG/DEPLOYMENT；MLX合并证据；本文件文档路径/交接范围/MLX行/本行 | 文档主提交d4e5f8c68c5b2704e19ebdbe1ccc61491e80ef58；本行随后补充；功能基线352665b；最终打包SHA以Git archive注释及交付校验回执为准 | 仅交接源码；无应用部署/重启、无新Release、无模型或业务数据操作；既有CI测试artifact不作为发行 | 本机68 Python（5条既有SWIG告警）/lint/初始14文档链接/diff通过；本次PR/main CI及最终解压/逐文件/入口验收另随交付记录，不提前登记为通过 | 文档revert或修正PR后重导出新文件名；原App/公开包/业务数据未变，无应用回滚 |
 | 2026-10-23 | 多模型接口与并行扫描：接入 OpenAI 兼容视觉模型、按引擎并发调度、界面自助增删接口 | 两轮独立对抗 review：首轮 P0=0、7 项 P1；次轮新增 P0=1（上传中取消导致重复调度）与 3 项未闭环；已逐条修复并补 6 项回归测试，末轮 P0/P1=0 | README 新增“多模型接口与并行扫描”；CHANGELOG 新增条目；本文件多模型范围/安装版状态/本行 | 主题分支 feat/multi-model-parallel-scan；PR #15 合并 `afc73d5685192193fddf9e843f4034a35487c55d`；CI 40002078181 Linux/Windows 通过 | 已更新本机 `/Applications/墨析 OCR 工作台.app`（源 afc73d5，签名验证通过；回退点 previous-1.3.0-6/previous.app） | 130 Python / 11 Node / lint / 构建；源码真实浏览器两模型同时扫描（2页5.4s、1页1.6s）、自动分配峰值3路、单接口3并发2.9s、自动卸载；安装版实测 3090Ti 5.6s / 4090 1.7s，合成任务已删、任务数回到4；原生截图受屏幕录制权限限制未取 | revert PR；接口配置只在运行数据目录，删除接口即回退；App 回滚用 previous.app + deployment.json |
 | 2026-10-27 | 合并2.0 BF16升级并备份更新本机，回填安装后原生与保全证据 | 代码所列问题已修复；候选及安装后证据/五文档独立复核P0/P1=0、新增文档P2=0；退出信号量及sandbox两项既有非阻断P2观察保留，不声称零告警 | README/CHANGELOG/DEPLOYMENT/UNLIMITED_OCR2_VALIDATION；本文件当前状态、部署清单及本行 | App源PR #17合并 `cfb7c929266fe43c352ae9aadf84b021d675010b`；本行证据为后续文档PR，不改包来源 | 已更新本机1.3.0(8)，新2.0模型单独目录；隔离及普通启动复验后正常退出；未发安装器/Release、未操作Windows | 178 Python/lint/11 Node；PR CI40549479921/main CI40550374203双平台成功；六图/浏览器/原生候选3页/安装版120条与ZIP/卸载通过；App20602、旧备份10424项签名清单通过；原4任务和数据/旧模型389/14/7项内容权限不变；端口进程已停，详见验证记录 | 审计根2026-10-27-uocr2/install-v2/previous.app + installed-manifest.json，原rollback入口与新rollback-v2目录；App-only，不动扫描/笔记/API及旧模型；源码revert PR |
+| 2026-10-27 | 按追加授权准备仅Mac的2.0候选rc.3，build9与独立DMG名 | 三文件代码/六文档/私有归档脚本独立末轮新增P0/P1/P2=0；归档持久化1项P2已修复；新包/公开路径另审；既有两项P2诊断保留 | README/CHANGELOG/DEPLOYMENT；新增rc.3说明与RC3_VALIDATION；本文件状态/构建/文档路径/追加授权/本行 | release/macos-uocr2-rc3；实际提交、合并与包源由本次PR及验收回填，不沿用已装版SHA | 尚未发布新包；不替换或重启已装App，不发Windows包，不动数据/模型 | 178 Python、lint、前端构建12 Node、43本地链接、脚本/plist/diff通过；PR/main CI、DMG原生/公开下载另记录，不提前登记通过 | 旧build归档和既有rc.2保留；失败不公开或标撤回，保留tag/资产；源码新PR修复，不回滚业务数据 |
