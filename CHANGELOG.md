@@ -1,11 +1,14 @@
 # 变更记录
 
-## 1.3.0-rc.3 — Mac 2.0 候选发布准备（2026-10-27）
+## 1.3.0-rc.3 — Mac 2.0 候选预览分发（2026-10-27）
 
 - 用户确认只发布 Mac 2.0 候选安装包，非正式版、非 Latest；本机已安装1.3.0(8)及业务数据不动，不操作Windows设备。
 - Mac build提升为9，DMG独立命名为`MoxiOCR-macOS-arm64-1.3.0-rc.3.dmg`；新增对应版本契约，Windows脚本/版本仍保持rc.2。OCR逻辑、固定BF16模型、权限和数据口径无新改动。
 - 发行只附DMG及SHA-256，不附模型权重、扫描/笔记/接口配置、私有日志或回退备份；保留所有旧tag和资产，不覆盖历史。
-- 三文件代码独立review新增P0/P1/P2=0，两个定向版本测试通过。PR/CI/合并、新包原生验收及公开下载仍待本批次执行，不以此前本机2.0成功代替。限制、签名状态及实际结果见 [RC3_VALIDATION.md](RC3_VALIDATION.md) 和 [候选说明](RELEASE_CANDIDATE_v1.3.0-rc.3.md)。
+- PR #19合并源`ee808f671712e8795c89a4d4f1c1d3f6d6287115`为DMG与tag实际来源；PR CI40559179370/main CI40560077376双平台成功，本机178 Python、lint、构建12 Node通过。后续证据文档提交不改变包源。
+- 已公开GitHub Pre-release、非Latest；恰好两个上传附件（网页另列GitHub自动源码归档）。真实内置浏览器点击下载DMG及校验文件，另以无认证公开URL独立回读，大小/SHA-256均与原包及服务端一致。
+- 新DMG在全新隔离目录完成空模型提示、系统文件框选3页PDF/120条小字、真实MLX扫描、深色表格/搜索、系统保存完整ZIP、自动卸载和正常退出。原安装App及data/两处1.0/2.0模型内容权限不变，不更新本机、不发Windows包。
+- 代码/实包/原生证据/发行正文及发布校验独立复核P0/P1=0；验证工具发现的问题已修复，三类非阻断P2退出诊断仍保留（信号量清理、sandbox、IMK消息通道），不声称日志零告警。App未Developer ID公证；全新Mac/最低macOS14/Windows2.0/长文档全量质量未验。证据、限制和回退见 [RC3_VALIDATION.md](RC3_VALIDATION.md) 和 [候选说明](RELEASE_CANDIDATE_v1.3.0-rc.3.md)。
 
 ## 2026-10-27 — Unlimited-OCR 2.0 Mac 本机预览（非公开发行）
 

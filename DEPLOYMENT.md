@@ -2,12 +2,14 @@
 
 ## 2026-10-27 rc.3：仅 Mac 2.0 候选分发（本批次）
 
-用户确认仅发布Mac 2.0候选安装包，非正式、非Latest，不再次更新本机或操作Windows。只改Mac打包标识、版本测试及发布文档，不改OCR逻辑、模型清单或权限。状态见 [RC3_VALIDATION.md](RC3_VALIDATION.md)，对外说明见 [rc.3候选说明](RELEASE_CANDIDATE_v1.3.0-rc.3.md)。以下为发布流程，具体通过以实测记录为准。
+用户确认仅发布Mac 2.0候选安装包，非正式、非Latest，不再次更新本机或操作Windows。只改Mac打包标识、版本测试及发布文档，不改OCR逻辑、模型清单或权限。状态见 [RC3_VALIDATION.md](RC3_VALIDATION.md)，对外说明见 [rc.3候选说明](RELEASE_CANDIDATE_v1.3.0-rc.3.md)。
+
+**本批次已执行并公开** [v1.3.0-rc.3](https://github.com/cpcboy/ximo-ocr/releases/tag/v1.3.0-rc.3)，2026-10-27T18:56:47Z；包源/tag为PR #19合并`ee808f671712e8795c89a4d4f1c1d3f6d6287115`。PR/main CI、新DMG隔离原生路径、真实内置浏览器两附件下载及独立公开回读已通过；两资产校验值与原包相同，Latest端点404，未设正式版。现装1.3.0(8)/cfb7c929未替换或重启，扫描及新旧模型保全；三类非阻断退出诊断如实保留。以下命令是已执行流程，**不能再次创建/覆盖现存rc.3、旧包或审计目录**。后续文档合并不重新构建此DMG。
 
 1. 在独立worktree完成自查、独立review、文档、PR和双平台CI；合并后等main CI成功，核对clean `HEAD == origin/main`。Mac App为1.3.0(9)，Windows仍rc.2；CI的Windows测试artifact不作为本次发行。
 2. 构建前将该worktree旧build8 App保全到新的`~/cpcsoft/OCR/.maintenance-backups/2026-10-27-rc3/prebuild/`，逐项核对来源、清单和签名。现安装版/受保护数据及三处模型目录建立只读内容/类型/权限清单；复核当前安装与上一批清单无漂移。旧公开包不受新worktree构建影响，不移动/覆盖。
 3. 执行既有`./mac-app/build-installer.sh`，只生成`build/macos/output/MoxiOCR-macOS-arm64-1.3.0-rc.3.dmg`及`.sha256`。同名存在就停止，不删文件重新打包。核对DMG、签名、真实`SOURCE_COMMIT`、前端来源、固定运行时和许可；排除模型权重、用户数据、凭据、日志、测试环境。
-4. 只读挂载新DMG，正常隔离运行其中App，使用全新support/data目录和既有已校验隔离2.0模型，不改全局环境；无模型提示、系统选文件、合成图片/PDF OCR、阅读、系统保存ZIP和退出须真实验证。3000/18765须空闲；若用户App运行，停止并先确认正常退出，不强占端口。保留两项既有非阻断诊断，不屏蔽或把它们记为已修复；新增关键路径失败即不发布。退出后核对安装版/数据/模型不变，卸载DMG。
+4. 只读挂载新DMG，正常隔离运行其中App，使用全新support/data目录和既有已校验隔离2.0模型，不改全局环境；无模型提示、系统选文件、合成图片/PDF OCR、阅读、系统保存ZIP和退出须真实验证。3000/18765须空闲；若用户App运行，停止并先确认正常退出，不强占端口。保留两项既有非阻断诊断，本批次另记录IMK退出消息通道诊断，共三类，不屏蔽或记为已修复；新增关键路径失败即不发布。退出后核对安装版/数据/模型不变，卸载DMG。
 5. 新包/证据/发行正文独立review后，确认无同名远端tag或Release；若存在先读取恢复流程，不重复创建或覆盖。用`gh release create v1.3.0-rc.3 <DMG绝对路径> <SHA256绝对路径> --repo cpcboy/ximo-ocr --target <实际合并包源完整SHA> --draft --prerelease --latest=false --notes-file <已核验正文>`建草稿。尖括号必须换成实测值，不可原样执行。正文附真实包源、两资产大小/哈希与未验边界，文档链接用GitHub完整URL。
 6. 草稿仅上述两资产，服务端digest/size与本机一致，tag（如已生成）须解析到真实包源；确认后`gh release edit v1.3.0-rc.3 --repo cpcboy/ximo-ocr --draft=false --prerelease --latest=false`。不移动旧tag、不使用clobber、不上传Windows包。
 7. 发布后真实浏览器看Pre-release/限制说明并点击DMG和校验文件下载，独立公开回读同一资产，核对字节数/SHA-256/tag/非Latest。任何浏览器/系统拦截不绕过、不登记通过。实际证据经独立review和后续文档PR回填，不把后续文档SHA冒充包源。
