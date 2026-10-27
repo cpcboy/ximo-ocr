@@ -2,7 +2,7 @@
 
 ## 2026-10-27 Unlimited-OCR 2.0 本机升级（本批次）
 
-用户批准 BF16 隔离测试通过后更新本机，允许正常退出，并确认数字安全去重口径。只构建/安装 Mac App 1.3.0(8)，**不调用安装器/Release 发布入口、不安装 Windows**。来源、阶段状态和证据见 [UNLIMITED_OCR2_VALIDATION.md](UNLIMITED_OCR2_VALIDATION.md)。以下是执行方案，实际结果另记。
+用户批准 BF16 隔离测试通过后更新本机，允许正常退出，并确认数字安全去重口径。只构建/安装 Mac App 1.3.0(8)，**不调用安装器/Release 发布入口、不安装 Windows**。来源、阶段状态和证据见 [UNLIMITED_OCR2_VALIDATION.md](UNLIMITED_OCR2_VALIDATION.md)。本批次已从 PR #17 合并 `cfb7c929266fe43c352ae9aadf84b021d675010b` 完成构建、候选原生验收、备份安装及安装后复验；PR/main CI均成功。下列步骤保留执行口径，**`install-v2/`已存在，不得重复执行该安装命令**。
 
 1. 主题分支完成代码/文档独立 review、178项本机 Python（含 Mac 数值门禁）、lint、构建及 Node；PR 与 main CI 成功后，从干净的 `HEAD == origin/main` 构建。非 Mac CI 跳过 MLX 数值测试不能替代 Mac 实测。
 2. 用户已保存并正常退出；核对4个历史任务终态、3000/18765端口空闲。当前旧 App 来源 afc73d5685192193fddf9e843f4034a35487c55d，先与上次安装清单核对，不重取基线掩盖漂移。本次私有审计根为 `~/cpcsoft/OCR/.maintenance-backups/2026-10-27-uocr2/`，保存 `installed-before.json` 与 `data-model-before.json`（扫描/结果/笔记/接口设置、managed 1.0 与 LM Studio 1.0的内容及权限）。
@@ -11,16 +11,28 @@
 5. 端口空闲且候选与合并源一致后，用既有入口执行（路径按实际 worktree 解析为绝对路径）：
 
    ```sh
-   .venv/bin/python scripts/deploy_macos.py install \
+   build/validation-venv/bin/python scripts/deploy_macos.py install \
      "$PWD/build/macos/墨析 OCR 工作台.app" \
      --expected-current /Users/chenpengcheng/cpcsoft/OCR/.maintenance-backups/2026-10-27-uocr2/installed-before.json \
      --backup-dir /Users/chenpengcheng/cpcsoft/OCR/.maintenance-backups/2026-10-27-uocr2/install-v2
    ```
 
-   使用实际已验证的 Python 3.11解释器；`install-v2`必须不存在。部署器保留旧App为`install-v2/previous.app`，生成`deployment.json`和`installed-manifest.json`，禁止手改App或绕过clean main/漂移/签名门禁。
+   上述Python路径相对于本次独立worktree `~/cpcsoft/OCR/work/uocr2-upgrade/`；其他checkout须使用实际已验证的Python 3.11解释器。执行时`install-v2`必须不存在。现已生成旧App备份`install-v2/previous.app`、`deployment.json`和`installed-manifest.json`，禁止手改App或绕过clean main/漂移/签名门禁。
 6. 安装后的真实原生合成用户路径仍在全新隔离数据目录进行；正常数据启动只读首页/模型信息/4条历史任务数量，不打开历史阅读器。正常退出后逐文件核对原389个data条目、14个managed 1.0条目、7个LM Studio条目的内容/类型/权限不变（含目录，不等同文件数）；核对模型卸载、服务退出、日志无新增错误。实际部署/证据另经文档PR回填，不把后续文档SHA冒充App来源。
 
-失败回退：正常退出并确认端口空闲，用原 `scripts/deploy_macos.py rollback`，candidate 为上述 `install-v2/previous.app`，expected-current 为 `install-v2/installed-manifest.json`，backup-dir 为**新的** `rollback-v2/`；部署器先保护失败候选，再恢复旧App。只回退应用，旧模型仍在原位置，不覆盖任何业务数据；新2.0权重可保留供排查，不自动删除。源码另走revert PR，不强推main。
+实际结果：候选系统文件框选3页PDF、深色表格阅读、系统保存ZIP通过；安装版用正式新模型目录扫描120条小字，5349字/57.5秒、阅读搜索和完整ZIP通过，任务后自动卸载。普通启动只读确认原4条历史任务及新模型就绪。退出后数据/两处1.0模型389/14/7条目内容、类型与权限全相同；新App20602项、旧备份10424项清单与签名均通过，新模型11文件全量哈希/收据通过。3000/18765关闭、相关进程退出。保留1 semaphore清理告警及原生sandbox诊断两项非阻断P2，不宣称根因解决；详见验证记录。
+
+失败回退：正常退出并确认端口空闲，用原 `scripts/deploy_macos.py rollback`，candidate 为上述 `install-v2/previous.app`，expected-current 为 `install-v2/installed-manifest.json`，backup-dir 为**新的** `rollback-v2/`；部署器先保护失败候选，再恢复旧App。本次尚未回退，确认该新目录不存在后，命令为：
+
+```sh
+cd /Users/chenpengcheng/cpcsoft/OCR/work/uocr2-upgrade
+build/validation-venv/bin/python scripts/deploy_macos.py rollback \
+  '/Users/chenpengcheng/cpcsoft/OCR/.maintenance-backups/2026-10-27-uocr2/install-v2/previous.app' \
+  --expected-current /Users/chenpengcheng/cpcsoft/OCR/.maintenance-backups/2026-10-27-uocr2/install-v2/installed-manifest.json \
+  --backup-dir /Users/chenpengcheng/cpcsoft/OCR/.maintenance-backups/2026-10-27-uocr2/rollback-v2
+```
+
+只回退应用，旧模型仍在原位置，不覆盖任何业务数据；新2.0权重可保留供排查，不自动删除。源码另走revert PR，不强推main。后续证据文档PR不重新构建或安装App，不把其SHA冒充实际App源`cfb7c929...`。
 
 ## 2026-10-23 本机源码工作区迁移
 
