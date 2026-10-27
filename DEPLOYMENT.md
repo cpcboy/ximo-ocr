@@ -1,5 +1,27 @@
 # 构建、发布与回滚
 
+## 2026-10-27 Unlimited-OCR 2.0 本机升级（本批次）
+
+用户批准 BF16 隔离测试通过后更新本机，允许正常退出，并确认数字安全去重口径。只构建/安装 Mac App 1.3.0(8)，**不调用安装器/Release 发布入口、不安装 Windows**。来源、阶段状态和证据见 [UNLIMITED_OCR2_VALIDATION.md](UNLIMITED_OCR2_VALIDATION.md)。以下是执行方案，实际结果另记。
+
+1. 主题分支完成代码/文档独立 review、178项本机 Python（含 Mac 数值门禁）、lint、构建及 Node；PR 与 main CI 成功后，从干净的 `HEAD == origin/main` 构建。非 Mac CI 跳过 MLX 数值测试不能替代 Mac 实测。
+2. 用户已保存并正常退出；核对4个历史任务终态、3000/18765端口空闲。当前旧 App 来源 afc73d5685192193fddf9e843f4034a35487c55d，先与上次安装清单核对，不重取基线掩盖漂移。本次私有审计根为 `~/cpcsoft/OCR/.maintenance-backups/2026-10-27-uocr2/`，保存 `installed-before.json` 与 `data-model-before.json`（扫描/结果/笔记/接口设置、managed 1.0 与 LM Studio 1.0的内容及权限）。
+3. 在独立 worktree 构建 `npm run build`、`./mac-app/build-app.sh`。当前该 worktree 没有旧 `.app`；如后续重建需保留首次候选并校验再重建。验证签名/来源/完整运行时，不把模型或测试数据放入包。运行候选时设置全新 `OCR_STUDIO_SUPPORT_DIR`、`OCR_STUDIO_DATA_DIR` 及指向隔离已校验 2.0 的 `UNLIMITED_OCR_MODEL_DIR`，不修改全局环境。真实原生选文件、OCR、阅读、ZIP保存、正常退出须通过。
+4. 仅向尚不存在的正式 `models/Unlimited-OCR-2-bf16/` 添加固定清单的11文件；排除缓存/临时分片/模型Python，逐个大小和SHA-256校验，写完整收据。保留两处旧1.0，不覆盖任何现存模型目录。如目标存在先停止核对，不强行合并目录。
+5. 端口空闲且候选与合并源一致后，用既有入口执行（路径按实际 worktree 解析为绝对路径）：
+
+   ```sh
+   .venv/bin/python scripts/deploy_macos.py install \
+     "$PWD/build/macos/墨析 OCR 工作台.app" \
+     --expected-current /Users/chenpengcheng/cpcsoft/OCR/.maintenance-backups/2026-10-27-uocr2/installed-before.json \
+     --backup-dir /Users/chenpengcheng/cpcsoft/OCR/.maintenance-backups/2026-10-27-uocr2/install-v2
+   ```
+
+   使用实际已验证的 Python 3.11解释器；`install-v2`必须不存在。部署器保留旧App为`install-v2/previous.app`，生成`deployment.json`和`installed-manifest.json`，禁止手改App或绕过clean main/漂移/签名门禁。
+6. 安装后的真实原生合成用户路径仍在全新隔离数据目录进行；正常数据启动只读首页/模型信息/4条历史任务数量，不打开历史阅读器。正常退出后逐文件核对原389个data条目、14个managed 1.0条目、7个LM Studio条目的内容/类型/权限不变（含目录，不等同文件数）；核对模型卸载、服务退出、日志无新增错误。实际部署/证据另经文档PR回填，不把后续文档SHA冒充App来源。
+
+失败回退：正常退出并确认端口空闲，用原 `scripts/deploy_macos.py rollback`，candidate 为上述 `install-v2/previous.app`，expected-current 为 `install-v2/installed-manifest.json`，backup-dir 为**新的** `rollback-v2/`；部署器先保护失败候选，再恢复旧App。只回退应用，旧模型仍在原位置，不覆盖任何业务数据；新2.0权重可保留供排查，不自动删除。源码另走revert PR，不强推main。
+
 ## 2026-10-23 本机源码工作区迁移
 
 用户指定迁至 `~/cpcsoft/OCR`。按 [PATH_MIGRATION.md](PATH_MIGRATION.md) 先 PR/review/CI/合并，再做同卷原样迁移、8 个 venv 路径修复和隔离浏览器验收。新目录为后续开发/构建起点，源码脚本仍自动推导根目录。

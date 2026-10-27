@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import hashlib
-import importlib.util
 import json
 import os
 import re
@@ -108,8 +107,8 @@ class ModelDownloadManager:
                 self._runtime_probe_cache = (fingerprint, self._probe_windows_runtime())
             return self._runtime_probe_cache[1]
         if self.kind == "mlx":
-            return all(importlib.util.find_spec(name) is not None for name in
-                       ("mlx", "transformers", "safetensors", "numpy", "PIL"))
+            from .mlx2_runtime import runtime_ready
+            return runtime_ready()
         return False
 
     def status(self) -> dict[str, Any]:
@@ -234,8 +233,29 @@ class ModelDownloadManager:
         return size
 
     def _download_model(self) -> None:
+        repairing_config = False
+        if self.spec.get("version") == 2:
+            # An explicit environment override may point to a v1/LM Studio
+            # directory. Refuse before touching its receipt, config or weights.
+            if self.model_dir.is_symlink() or (self.model_dir / "model.safetensors").exists():
+                raise RuntimeError("2.0 必须使用独立目录，不能覆盖旧模型或符号链接目录")
+            config_file = self.model_dir / "config.json"
+            if config_file.exists():
+                try:
+                    config = json.loads(config_file.read_text(encoding="utf-8"))
+                    is_v2 = config.get("sparse_attention_config", {}).get("training_stage") == "dash"
+                except (OSError, ValueError, AttributeError):
+                    # A receipt plus the exact pinned weights identifies our
+                    # own damaged v2 directory. Never infer identity from its
+                    # name alone, or repair a valid foreign/v1 configuration.
+                    is_v2 = repairing_config = self._has_v2_repair_identity()
+                if not is_v2:
+                    raise RuntimeError("目标目录已有其它模型配置，请使用墨析独立的 2.0 目录")
         self.model_dir.mkdir(parents=True, exist_ok=True)
-        (self.model_dir / RECEIPT).unlink(missing_ok=True)
+        # The corrupt config already invalidates this receipt. Retain it until
+        # atomic config repair so cancellation/network failure remains resumable.
+        if not repairing_config:
+            (self.model_dir / RECEIPT).unlink(missing_ok=True)
         pending = []
         completed = 0
         for item in self.spec["files"]:
@@ -259,6 +279,7 @@ class ModelDownloadManager:
         if shutil.disk_usage(self.model_dir).free < remaining + reserve:
             raise RuntimeError(f"磁盘空间不足，至少还需 {(remaining + reserve) / 1024**3:.1f} GB 可用空间")
         self._set(bytes_downloaded=completed)
+
         for item in sorted(pending, key=lambda f: f["path"] == self.spec["weights"]):
             self._check_cancel()
             for attempt in range(3):
@@ -273,6 +294,22 @@ class ModelDownloadManager:
                     if self._cancel.wait(attempt + 1):
                         self._check_cancel()
         self._set(bytes_downloaded=completed)
+
+    def _has_v2_repair_identity(self) -> bool:
+        receipt_path = self.model_dir / RECEIPT
+        try:
+            if receipt_path.is_symlink():
+                return False
+            receipt = json.loads(receipt_path.read_text(encoding="utf-8"))
+            expected_names = {item["path"] for item in self.spec["files"]}
+            if receipt.get("revision") != self.spec["revision"] or set(receipt.get("files", {})) != expected_names:
+                return False
+            weights = [item for item in self.spec["files"] if item["path"].endswith(".safetensors")]
+            return bool(weights) and all(self._valid_file(self.model_dir / item["path"], item) for item in weights)
+        except InterruptedError:
+            raise
+        except (OSError, ValueError, AttributeError, TypeError):
+            return False
 
     def _ensure_uv(self) -> Path:
         tools_dir = self._runtime_root().parent / "runtime-tools"

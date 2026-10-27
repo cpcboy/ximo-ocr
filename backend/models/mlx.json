@@ -1,79 +1,20 @@
 {
-  "id": "LoJexLLM/Unlimited-OCR-MLX",
-  "revision": "267d7adcbcd3730fdffb1eefd70ef6f486fbfc92",
-  "weights": "model.safetensors",
+  "id": "mlx-community/Unlimited-OCR-2-bf16",
+  "revision": "850d1e483f5a82a0597f0a45aac31b07ba840df2",
+  "version": 2,
+  "precision": "BF16",
+  "weights": "model-00001-of-00002.safetensors",
   "files": [
-    {
-      "path": "README.md",
-      "size": 7572,
-      "algorithm": "git-sha1",
-      "digest": "3601324a7c2f1246c125a0d8127ae0b47b0684d8"
-    },
-    {
-      "path": "__init__.py",
-      "size": 229,
-      "algorithm": "git-sha1",
-      "digest": "410a1d11074e97fb899285f269f0ad7626895f58"
-    },
-    {
-      "path": "config.json",
-      "size": 1405,
-      "algorithm": "git-sha1",
-      "digest": "62332f8154a085ae7c0ef2165693e2e59554e62c"
-    },
-    {
-      "path": "config.py",
-      "size": 4555,
-      "algorithm": "git-sha1",
-      "digest": "16ee95dab81576a93590e44b00ea647c20d7aabb"
-    },
-    {
-      "path": "image_processing.py",
-      "size": 6917,
-      "algorithm": "git-sha1",
-      "digest": "f0708a80f306dae3c153bda6eea3aaf77c834ed9"
-    },
-    {
-      "path": "inference.py",
-      "size": 10727,
-      "algorithm": "git-sha1",
-      "digest": "ecb5820402cafd42a1b33c677639e959bc505673"
-    },
-    {
-      "path": "loader.py",
-      "size": 2685,
-      "algorithm": "git-sha1",
-      "digest": "fa17d3617492721699f93805c2e1541f303e772e"
-    },
-    {
-      "path": "model.py",
-      "size": 41188,
-      "algorithm": "git-sha1",
-      "digest": "70c84f1076de671a8c9b1bfea51689a3f379d39a"
-    },
-    {
-      "path": "model.safetensors",
-      "size": 6672561320,
-      "algorithm": "sha256",
-      "digest": "7aefa71cd2105262598bc40a2c4edab34f8b8670a8db623ed82ca5e1b0f21a08"
-    },
-    {
-      "path": "special_tokens_map.json",
-      "size": 801,
-      "algorithm": "git-sha1",
-      "digest": "d59d312be868edc63b195e19e256c730dba685ad"
-    },
-    {
-      "path": "tokenizer.json",
-      "size": 9979544,
-      "algorithm": "git-sha1",
-      "digest": "c93a1c4d2ecf31bb5a9ec39eb73dfbf915aaf77e"
-    },
-    {
-      "path": "tokenizer_config.json",
-      "size": 165938,
-      "algorithm": "git-sha1",
-      "digest": "ba9d4175d69cde58ad9f68a76a4758df091eaffa"
-    }
+    {"path": "README.md", "size": 1472, "algorithm": "git-sha1", "digest": "a5b7381b38ea618a31f9d0bfdf3297fb91825a2c"},
+    {"path": "chat_template.jinja", "size": 224, "algorithm": "git-sha1", "digest": "018be89ef7f7a19b2e94d9540e2ade1cbc157365"},
+    {"path": "config.json", "size": 6685, "algorithm": "git-sha1", "digest": "e7b7bf7d734c07195c9d2037e83f000bec9cb3a5"},
+    {"path": "generation_config.json", "size": 111, "algorithm": "git-sha1", "digest": "6f7f9313195af78c979fc889accc234edb6e0d3c"},
+    {"path": "model-00001-of-00002.safetensors", "size": 5247030176, "algorithm": "sha256", "digest": "1dde15597f56b6416eca589a38759a253369456b5f1a7de72de65952bd7f225e"},
+    {"path": "model-00002-of-00002.safetensors", "size": 1433142079, "algorithm": "sha256", "digest": "c026f79748721d0b5a9ebb1dd5b2176802b396278e8dcd649598d377af7a4208"},
+    {"path": "model.safetensors.index.json", "size": 67012, "algorithm": "git-sha1", "digest": "617172c90b6226fd3f2b0d241df1f7ba3e76feec"},
+    {"path": "processor_config.json", "size": 506, "algorithm": "git-sha1", "digest": "ba6519a10b25d5aa6e42ee7af37c9a19d5ff3750"},
+    {"path": "special_tokens_map.json", "size": 549, "algorithm": "git-sha1", "digest": "ae2383ca05f494aa736e72e6a874332cd2f1c67e"},
+    {"path": "tokenizer.json", "size": 9980278, "algorithm": "git-sha1", "digest": "d5909a7c1e63a78be90fe2bde6c8464e6e9e8540"},
+    {"path": "tokenizer_config.json", "size": 567, "algorithm": "git-sha1", "digest": "61385809f8805d910febae64f2cb8ba81fa7816b"}
   ]
 }

@@ -31,6 +31,40 @@ class _FakeModelDownloadManager:
         return {}
 
 
+def test_v2_export_preserves_original_layout_and_truncation(reader_app):
+    job = reader_app.store.create(filename="v2.pdf", content_type="application/pdf", options={})
+    raw = '<PAGE><BLOCK>text[0,0,100,100]<FORK>Recognized text'
+    reader_app.store.update(job['id'], status='completed', pages=[{
+        'index': 0, 'text': 'Recognized text', 'raw_model_output': raw,
+        'model_id': 'mlx-community/Unlimited-OCR-2-bf16', 'truncated': True,
+        'partial_result': True, 'stop_reason': 'length',
+    }])
+    reader_app._write_exports(job['id'])
+    exported = json.loads((reader_app.store.job_dir(job['id']) / 'exports/v2.json').read_text())
+    page = exported['pages'][0]
+    assert page['text'] == 'Recognized text' and page['raw_model_output'] == raw
+    assert page['model_id'] == 'mlx-community/Unlimited-OCR-2-bf16' and page['truncated'] is True
+    assert page['partial_result'] and page['stop_reason'] == 'length'
+
+
+@pytest.mark.parametrize('long_template', [False, True])
+def test_v2_reader_and_export_keep_all_numbered_records(reader_app, long_template):
+    text = '\n\n'.join(f'Entry {i:03d}: shipment ID MX-{2000+i}; units {i+3}.' for i in range(1, 121))
+    if long_template:
+        text = '\n'.join(f'Entry {i:03d}: This shipment contains the following items and must be delivered '
+                         f'to the designated address before the scheduled collection time. Quantity {i+3}.'
+                         for i in range(1, 121))
+    job = reader_app.store.create(filename='unique-records.png', content_type='image/png', options={})
+    reader_app.store.update(job['id'], status='completed', pages=[{
+        'index': 0, 'text': text, 'model_id': 'mlx-community/Unlimited-OCR-2-bf16',
+    }])
+    reader_app.prepare_reader(job['id'])
+    page = reader_app.store.get(job['id'])['pages'][0]
+    assert page['text'] == text and page.get('reading_text', text) == text
+    exported = json.loads((reader_app.store.job_dir(job['id']) / 'exports/unique-records.json').read_text())
+    assert exported['pages'][0]['text'] == text
+
+
 @pytest.fixture()
 def reader_app(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> Any:
     engine_module = types.ModuleType("backend.engine")
