@@ -69,11 +69,11 @@ def _masked_text(value: str) -> str:
     )
 
 
-def _canonical_words(value: str) -> list[tuple[str, int, int]]:
+def _canonical_words(value: str, *, preserve_numbers: bool = False) -> list[tuple[str, int, int]]:
     words: list[tuple[str, int, int]] = []
     for match in WORD_RE.finditer(_masked_text(value)):
         token = match.group(0).lower()
-        if any(character.isdigit() for character in token):
+        if not preserve_numbers and any(character.isdigit() for character in token):
             token = "#"
         words.append((token, match.start(), match.end()))
     return words
@@ -117,8 +117,29 @@ def analyze_repetitive_tail(
     *,
     ngram_size: int = 12,
     tail_words: int = 1200,
+    preserve_numbers: bool = False,
 ) -> RepetitionFinding:
-    words = _canonical_words(value)
+    if preserve_numbers:
+        # V2: do not cut a whole record because a short template inside it
+        # repeats. The entire candidate tail must be exact repeated cycles,
+        # including numbers, punctuation, CJK and HTML (whitespace aside).
+        tokens = list(re.finditer(r"\S+", value))
+        values = [token.group() for token in tokens]
+        loop = find_exact_token_loop(values)
+        if not loop:
+            return RepetitionFinding()
+        start, period = loop["start"], loop["period"]
+        block = values[start:start + period]
+        while start >= period and values[start - period:start] == block:
+            start -= period
+        cutoff = tokens[start + period].start()
+        return RepetitionFinding(
+            detected=True, cutoff=cutoff, max_occurrences=(len(tokens) - start) // period,
+            duplicate_ratio=(len(tokens) - start - period) / len(tokens),
+            ngram_size=period, phrase_preview=" ".join(block)[:180],
+            reason="检测到完整重复周期（保留数字和标点差异）",
+        )
+    words = _canonical_words(value, preserve_numbers=preserve_numbers)
     if len(words) < 120:
         return RepetitionFinding(ngram_size=ngram_size)
 
@@ -201,7 +222,7 @@ def analyze_repetitive_tail(
         duplicate_ratio=duplicate_ratio,
         ngram_size=ngram_size,
         phrase_preview=" ".join(gram)[:180],
-        reason="检测到长句或编号变化后的重复循环",
+        reason="检测到重复词句（已保留数字差异）" if preserve_numbers else "检测到长句或编号变化后的重复循环",
     )
 
 
@@ -225,12 +246,12 @@ def _close_open_structural_tags(value: str) -> str:
     return value + "".join(f"</{tag}>" for tag in reversed(stack))
 
 
-def trim_repetitive_tail(value: str) -> TrimmedText:
+def trim_repetitive_tail(value: str, *, preserve_numbers: bool = False) -> TrimmedText:
     current = value
     findings: list[RepetitionFinding] = []
     last_finding = RepetitionFinding()
     for _ in range(8):
-        finding = analyze_repetitive_tail(current)
+        finding = analyze_repetitive_tail(current, preserve_numbers=preserve_numbers)
         last_finding = finding
         if not finding.detected or finding.cutoff is None:
             break
@@ -261,7 +282,7 @@ def trim_repetitive_tail(value: str) -> TrimmedText:
 
 
 def find_exact_token_loop(
-    token_ids: Sequence[int],
+    token_ids: Sequence[int | str],
     *,
     max_period: int = 192,
     minimum_span: int = 96,

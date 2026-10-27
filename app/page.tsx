@@ -81,7 +81,7 @@ type ModelStatus = {
   message: string;
   busy: boolean;
   last_loaded_at: string | null;
-  platform?: "windows";
+  platform?: "windows" | "mlx";
   framework?: string;
   hardware?: {
     compatible: boolean;
@@ -171,6 +171,8 @@ type PageRecord = {
   edited?: boolean;
   repetition_trimmed?: boolean;
   truncated?: boolean;
+  partial_result?: boolean;
+  stop_reason?: string | null;
   repetition_diagnostics?: Record<string, unknown> | null;
   reading_text?: string;
   reading_repair?: {
@@ -1760,6 +1762,18 @@ export default function Home() {
                             输出达上限
                           </span>
                         )}
+                        {selectedPage?.stop_reason === "repetition" && (
+                          <span className="edited-badge truncated-badge"
+                            title="模型因持续重复而提前停止，当前仅为部分结果；请对照原图校对或重试">
+                            重复中断 · 部分结果
+                          </span>
+                        )}
+                        {selectedPage?.partial_result && !selectedPage.truncated && selectedPage.stop_reason !== "repetition" && (
+                          <span className="edited-badge truncated-badge"
+                            title="检测到重复内容并做了清理，请对照原图校对；完整模型原文保留在 JSON 导出中">
+                            重复清理 · 请校对
+                          </span>
+                        )}
                       </div>
                       <div className="result-actions">
                         <button
@@ -2033,7 +2047,7 @@ export default function Home() {
               <h3>
                 {model?.platform === "windows"
                   ? "Unlimited-OCR Windows"
-                  : "Unlimited-OCR MLX"}
+                  : "Unlimited-OCR 2.0 · MLX BF16"}
               </h3>
               <dl>
                 <div>
@@ -2094,7 +2108,7 @@ export default function Home() {
                   <div className="model-download-copy">
                     <strong>{health.model_download.platform === "windows"
                       ? "Unlimited-OCR · Windows / NVIDIA"
-                      : "Unlimited-OCR MLX · Apple Silicon"}</strong>
+                      : "Unlimited-OCR 2.0 · BF16 / Apple Silicon"}</strong>
                     <span role="status">{health.model_download.message}</span>
                   </div>
                   <div className="model-download-progress">
@@ -2146,7 +2160,7 @@ export default function Home() {
                   <small>支持暂停与断点续传；固定版本，完整校验后启用。关闭应用会暂停下载，重新打开后点“继续下载”。模型不包含在安装包中。</small>
                   <small>{health.model_download.platform === "windows"
                     ? "Windows 使用 PyTorch / NVIDIA CUDA，不使用 Apple MLX；首次还需下载推理组件，建议至少预留 18 GB。"
-                    : "需要 Apple Silicon（M 系列）和 macOS 14+；无需安装 LM Studio，建议预留 8 GB 磁盘。"}</small>
+                    : "2.0 使用无量化 BF16 权重和固定版本 MLX 适配（预览）；需要 Apple Silicon、macOS 14+，建议预留 8 GB 磁盘。1.0 模型原地保留，不覆盖、不自动删除。"}</small>
                   <small className="model-download-path">保存至：{health.model_download.download_path}</small>
                   <small>模型版本：{health.model_download.model_revision.slice(0, 12)}</small>
                 </div>

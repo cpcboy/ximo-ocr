@@ -1,7 +1,7 @@
 # 墨析 · 本地 OCR 工作台
 
-这是为 Unlimited-OCR 制作的本机网页工作台。macOS 版使用
-`LoJexLLM/Unlimited-OCR-MLX`；Windows 安装版使用官方
+这是为 Unlimited-OCR 制作的本机网页工作台。当前源码的 Apple Silicon macOS 版使用
+`mlx-community/Unlimited-OCR-2-bf16`（2.0 本机预览）；Windows 安装版仍使用官方
 `baidu/Unlimited-OCR` PyTorch 模型。文件、页面预览和识别结果都保存在本机；
 默认不调用外部 OCR 接口，也可以按需接入自己的 OpenAI 兼容模型接口（见下文“多模型接口与并行扫描”）。
 
@@ -15,11 +15,13 @@
 准备交给 DeepSeek 或其他维护者时，先读 [接手入口](START_HERE-DEEPSEEK.md)、
 [详细技术交接](handoff/DEEPSEEK_HANDOFF.md) 和 [接手工单](handoff/WORK_ORDERS.md)。
 2026-10-23 交接只打包已合并源码/文档，不包含模型、扫描数据或凭据，不更新 App 或发布新安装包。
-最新功能源码含 PR #11 的 MLX 优化，公开 rc.2 和原机安装版仍不含该优化；不要混淆三者。
+这是一份历史交接；2026-10-23 本机已更新到 PR #15 的多模型版本。2026-10-27 的 2.0 升级进度、实际安装来源和未验范围以 [2.0 验证记录](UNLIMITED_OCR2_VALIDATION.md) 为准。公开 rc.2 不含 2.0，不要混淆源码、本机安装和公开安装器。
 
 1.3.0 当前验收状态见 [MODEL_DOWNLOAD_VALIDATION.md](MODEL_DOWNLOAD_VALIDATION.md)。Windows 始终明确区分候选包与目标 Windows 10 / NVIDIA 实机验收。
 
 ## 开始使用
+
+2026-10-27 正在按用户授权进行 Mac 2.0 本机预览升级：保留 1.0 模型、原件、结果、笔记与接口设置，不发布新安装包、不更新 Windows；完整状态和回退点见 [2.0 验证记录](UNLIMITED_OCR2_VALIDATION.md)。未完成安装记录前，不把当前源码说明当成已安装版本。
 
 2026-10-22 已公开 [v1.3.0-rc.2 候选预览版](https://github.com/cpcboy/ximo-ocr/releases/tag/v1.3.0-rc.2)：阅读配色修复已打入 Mac/Windows 新安装包，非正式版、非 Latest，不自动更新本机。新 DMG 已完成原生隔离阅读/导入/ZIP/退出验证；Windows 实机与完整图片 OCR 仍未验收。最新分发验证边界见 [rc.2 验证记录](RC2_VALIDATION.md)，校验与限制见 [rc.2 发行说明](RELEASE_CANDIDATE_v1.3.0-rc.2.md)。下文 rc.1 为历史批次，不代表 rc.2 状态。
 
@@ -51,24 +53,26 @@
 
 ## Mac 加速与内存效率
 
-Apple Silicon 安装版已内置 MLX，并使用 Metal GPU；无需额外安装 MLX 或启动 LM Studio。当前源码加入不改变识别参数的闲置缓存回收，现安装 App 和公开 rc.2 尚不包含此变更。它不量化权重、不降低图片分辨率、不截短输出；1 GiB 仅为闲置缓存回收触发阈值，不是总内存上限。本机 M3 Max / 36 GiB 五类合成图、20次识别的10对完整输出一致，本次组合耗时减少38.16%；小图首字后阶段略慢，活跃峰值仍约17.4 GB，不保证任意文档提速。实测、限制、回滚及安装状态见 [MLX_PERFORMANCE.md](MLX_PERFORMANCE.md)，不能把源码测试当作已安装版提速。
+Apple Silicon 安装版内置 MLX，使用 Metal GPU；无需额外安装 MLX 或启动 LM Studio。2.0 本机预览使用原 BF16 精度，不量化权重、不缩减既定质量参数，并固定已审查的 MLX 适配源码。任务结束或网页断连后自动卸载空闲模型。MLX 适配的视觉插值、激活和归一化已与官方参考做数值核对，仍不等于全数据集质量评测；见 [2.0 验证记录](UNLIMITED_OCR2_VALIDATION.md)。
+
+旧 1.0 的闲置缓存优化历史基准在 [MLX_PERFORMANCE.md](MLX_PERFORMANCE.md)，该报告的 38.16% 耗时改善不可套用到 2.0，也不代表任何文档的固定提速比例。`scripts/benchmark_mlx.py` 仍显式测旧版引擎，不会误用新模型。
 
 ## 首次下载模型
 
 | 平台 | 程序选择的模型 | 要求 |
 | --- | --- | --- |
-| Apple Silicon Mac | [LoJexLLM/Unlimited-OCR-MLX](https://huggingface.co/LoJexLLM/Unlimited-OCR-MLX) | M 系列芯片、macOS 14+；安装包内含独立 Python/MLX/Node，不依赖构建者的 Python。模型约 6.68 GB（界面按二进制显示约 6.22 GB），建议至少 8 GB 空闲磁盘。 |
+| Apple Silicon Mac（当前源码/2.0 本机预览） | [mlx-community/Unlimited-OCR-2-bf16](https://huggingface.co/mlx-community/Unlimited-OCR-2-bf16) | M 系列芯片、macOS 14+；App 内含独立 Python/MLX/Node。固定修订 850d1e48…，11 文件共 6,690,229,659 字节；升级保留旧模型，除现有空间外还需新模型和 App/备份空间。 |
 | Windows x64 | [baidu/Unlimited-OCR](https://huggingface.co/baidu/Unlimited-OCR) | NVIDIA GPU 和兼容 CUDA 12.8 的驱动；另下载 PyTorch 等推理组件，建议至少 18 GB 空闲磁盘。Apple MLX 不支持 Windows。 |
 
 - 下载由用户主动点击，不随启动自动下载。界面显示进度、文件名、保存目录和固定修订。
 - 可以暂停、退出 App、重开后继续；`.part` 文件用于续传。网络失败不会把不完整权重当成可用模型。
-- 模型来自固定 Hugging Face 修订，每个文件验证内容哈希，全部校验完成后才启用；模型自带的 Python 推理代码同样固定并校验。
+- 模型来自固定 Hugging Face 修订，每个文件验证内容哈希，全部校验完成后才启用。Mac 2.0 不下载/执行模型仓库的 Python 代码；固定 MLX 适配随 App 提供。Windows 保持原有固定代码校验流程。
 - “校验 / 修复”会重新校验内容。Windows 还会重新检查运行组件能否导入、版本是否匹配，必要时重装到本应用专用目录。
 - 下载时不要开始扫描；模型已载入、任务执行或排队中时不能下载覆盖它，先等待完成并卸载。
-- 旧 Mac 用户的完整 LM Studio 模型仍可兼容使用；下载到墨析后优先使用墨析目录，不覆盖或删除旧模型。
+- Mac 2.0 与 1.0 架构不同，不自动回退或把旧 LM Studio 权重冒充 2.0。新模型保存在独立目录，旧模型保留给旧 App 回退；不要手动把模型目录混用。
 - Mac 内置推理库损坏时重新安装墨析；Intel Mac 不提供 MLX 下载。网络不可用时保留断点，不通过关闭安全检查解决。
 
-引擎会持续检查模型是否陷入重复生成，包括完全相同的短循环、长句循环，以及只改变编号的近似循环。发现异常后会提前停止并清理重复尾巴；网页会在该页底部显示处理提示。对于旧版已经导出的 JSON 结果，可使用 `backend.repair_results` 生成不覆盖原件的去重修复版。
+2.0 对完全重复的生成 token 循环提前停止，并明确标注“部分结果/重复停止”；清理尾部时要求完整周期一致，保留编号、金额、符号及中文差异。OCR 与阅读器使用相同口径；JSON/完整包额外保留 `raw_model_output` 和 `model_id`，方便核对。达到输出上限会标注不完整，不能当成全文。旧版结果不批量重写、原有旧版规则不变；旧 JSON 如需修复，必须单独确认范围并保留原件。
 
 ## 内置阅读器
 
@@ -101,7 +105,7 @@ OCR 结果，不会重新加载识别模型，也不会另开后台服务。
 - Mac 安装版根目录：`~/Library/Application Support/墨析 OCR 工作台/`。
 - Windows 安装版根目录：`%LOCALAPPDATA%\MoxiOCRStudio\`。
 - 安装版任务数据、日志分别在上述根目录的 `data/jobs/`、`logs/`；开发模式默认项目内 `data/`。
-- Mac 独立模型：上述根目录的 `models/Unlimited-OCR-MLX/`；Windows：`models/Unlimited-OCR/`。
+- Mac 2.0 独立模型：上述根目录的 `models/Unlimited-OCR-2-bf16/`；旧 `models/Unlimited-OCR-MLX/` 保留；Windows 仍为 `models/Unlimited-OCR/`。
 - 原件、结果、阅读笔记与模型留在本机；这些目录被 Git 忽略，安装器只复制代码和运行组件。
 - 网页和后端只监听 `127.0.0.1`（端口 `3000` / `18765`），局域网其他设备无法直接访问。
 - API 校验 Host 与浏览器 Origin，拒绝外部网页跨站操作；只接受现有 3000 端口本机前端，保留原生本机无 Origin 调用。
@@ -114,7 +118,7 @@ OCR 结果，不会重新加载识别模型，也不会另开后台服务。
 - 表格或小字：高精度、220 DPI、16K 输出。
 - 简单截图：快速、120 或 160 DPI、4K 输出。
 - 页数很多的 PDF：先在“页码范围”填写 `1-10`、`12,15-20` 等范围。
-- 模型的原生推荐指令是 `document parsing.`；除非有明确需求，一般不需要修改。
+- 默认指令无需改动：Mac 2.0 会把旧默认 `document parsing.` 映射为上游 `Multi page parsing.`，自定义指令原样保留。墨析仍逐页识别，此指令不代表已实现跨多页联合上下文。
 
 ## 修复运行环境
 

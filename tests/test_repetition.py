@@ -96,3 +96,31 @@ def test_analysis_reports_metrics_without_trimming_clean_content() -> None:
     clean = " ".join(f"word{index}" for index in range(500))
     finding = analyze_repetitive_tail(clean)
     assert not finding.detected
+
+
+def test_v2_preserves_unique_numbered_records_and_amounts() -> None:
+    text = '\n\n'.join(f'Entry {i:03d}: shipment ID MX-{2000+i}; units {i+3}.' for i in range(1, 121))
+    result = trim_repetitive_tail(text, preserve_numbers=True)
+    assert result.text == text and not result.finding.detected
+    # Existing/v1 behavior stays explicitly unchanged; never rewrite old jobs.
+    assert trim_repetitive_tail(text).finding.detected
+
+
+def test_v2_still_detects_a_real_identical_loop() -> None:
+    sentence = 'The same item number 104 costs 99.25 and repeats without any new information. '
+    result = trim_repetitive_tail('Introduction to the invoice.\n' + sentence * 30, preserve_numbers=True)
+    assert result.finding.detected and result.finding.removed_chars > 100
+
+
+def test_v2_keeps_long_common_templates_with_distinct_numbers() -> None:
+    text = '\n'.join(f'Entry {i:03d}: This shipment contains the following items and must be delivered '
+                     f'to the designated address before the scheduled collection time. Quantity {i+3}.'
+                     for i in range(1, 121))
+    result = trim_repetitive_tail(text, preserve_numbers=True)
+    assert result.text == text and not result.finding.detected
+
+
+def test_v2_keeps_decimal_punctuation_and_chinese_differences() -> None:
+    text = '\n'.join(f'商品{chr(0x4e00+i)}: Amount {i}.25; serial ID A-{i}-34. Common repeated description.'
+                     for i in range(120))
+    assert trim_repetitive_tail(text, preserve_numbers=True).text == text

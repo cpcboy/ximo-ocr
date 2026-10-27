@@ -523,6 +523,11 @@ def _write_exports(job_id: str) -> None:
                 "error": page.get("error"),
                 "repetition_trimmed": page.get("repetition_trimmed", False),
                 "repetition_diagnostics": page.get("repetition_diagnostics"),
+                "model_id": page.get("model_id"),
+                "raw_model_output": page.get("raw_model_output"),
+                "truncated": page.get("truncated", False),
+                "partial_result": page.get("partial_result", False),
+                "stop_reason": page.get("stop_reason"),
             }
         )
 
@@ -741,6 +746,10 @@ def _process_job(job_id: str) -> None:
                             ),
                             "usage": diagnostics.get("usage"),
                             "truncated": bool(diagnostics.get("truncated")),
+                            "partial_result": bool(diagnostics.get("partial_result")),
+                            "stop_reason": diagnostics.get("stop_reason"),
+                            "model_id": diagnostics.get("model_id"),
+                            "raw_model_output": diagnostics.get("raw_model_output"),
                         }
                     )
 
@@ -1091,7 +1100,9 @@ def prepare_reader(job_id: str) -> dict[str, Any]:
     removed_chars = 0
     for page in job.get("pages", []):
         original = str(page.get("text") or "")
-        result = trim_repetitive_tail(original)
+        result = trim_repetitive_tail(original, preserve_numbers=(
+            page.get("model_id") == "mlx-community/Unlimited-OCR-2-bf16"
+        ))
         reading_text: str | None = None
         reading_repair: dict[str, Any] | None = None
         if result.finding.detected and result.text != original:

@@ -121,10 +121,12 @@ def main() -> None:
 
     import importlib.metadata
     import mlx.core as mx
-    from backend.engine import ModelEngine
-    from backend.model_catalog import model_spec, model_verified
+    # This historical benchmark measures the v1 compatibility/cache patch only.
+    from backend.engine import LegacyMLXEngine as ModelEngine
+    from backend.model_catalog import CATALOG_DIR, model_verified
+    legacy_spec = json.loads((CATALOG_DIR / "mlx-v1.json").read_text())
 
-    if not model_verified(args.model_dir, model_spec("mlx")):
+    if not model_verified(args.model_dir, legacy_spec):
         raise RuntimeError("Benchmark requires an already verified local MLX model")
     samples = make_samples(args.output)
     if args.samples:
@@ -141,8 +143,8 @@ def main() -> None:
               "macos": platform.mac_ver()[0], "machine": platform.machine(),
               "chip": subprocess.check_output(["sysctl", "-n", "machdep.cpu.brand_string"], text=True).strip(),
               "source_commit": subprocess.check_output(["git", "-C", str(root), "rev-parse", "HEAD"], text=True).strip(),
-              "source_sha256": {str(p.relative_to(root)): hashlib.sha256(p.read_bytes()).hexdigest() for p in [Path(__file__).resolve(), root / "backend/model_compat.py", root / "backend/mlx_performance.py", root / "backend/engine.py"]},
-              "model_revision": model_spec("mlx")["revision"], "reference": args.reference,
+              "source_sha256": {str(p.relative_to(root)): hashlib.sha256(p.read_bytes()).hexdigest() for p in [Path(__file__).resolve(), root / "backend/model_compat.py", root / "backend/mlx_performance.py", root / "backend/engine.py", root / "backend/legacy_mlx_engine.py", CATALOG_DIR / "mlx-v1.json"]},
+              "model_revision": legacy_spec["revision"], "reference": args.reference,
               "reference_commit": args.reference_commit,
               "reference_source_sha256": hashlib.sha256(reference_source.encode()).hexdigest(),
               "allocator_start": "cache cleared before each timed scan; same loaded model",

@@ -14,7 +14,7 @@ def test_generation_keeps_full_logits_and_quality_settings():
     assert "last_logits_only" not in [arg.arg for arg in call.args.args]
     assert "logits = self.lm_head(hidden_states)" in source.read_text(encoding="utf-8")
     assert "single_token_moe" not in source.read_text(encoding="utf-8")
-    engine = source.with_name("engine.py").read_text(encoding="utf-8")
+    engine = source.with_name("legacy_mlx_engine.py").read_text(encoding="utf-8")
     for setting in ("temperature=0.0", "base_size=1024", "image_size=640 if precise else 1024", "crop_mode=precise"):
         assert setting in engine
     loop = next(n for n in ast.walk(generate) if isinstance(n, ast.For) and isinstance(n.target, ast.Name) and n.target.id == "step")

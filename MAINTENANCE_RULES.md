@@ -1,6 +1,6 @@
 # 墨析 OCR 工作台维护铁律
 
-状态：用户已确认下方十一项项目口径。维护规范正式启用；仅完成文档不代表功能、安装包或实机验收完成。2026-10-22 已按第11项公开 v1.3.0-rc.2 候选，非正式版、非 Latest；本机仍保留第9/10项部署的1.3.0(6)，本批次仅经用户确认正常退出后做隔离验收，不替换本机、不操作Windows。公开分发与未验收边界见 RC2_VALIDATION.md。
+状态：维护规范正式启用。公开发行仍为第11项的 v1.3.0-rc.2 候选，非正式版、非 Latest；本机在2026-10-23已更新为多模型版本 afc73d5 / 1.3.0(7)。2026-10-27 用户追加授权 2.0 BF16 隔离验证通过后备份更新本机，保留 1.0 与全部数据，不发布新安装器；最新执行状态见 UNLIMITED_OCR2_VALIDATION.md。历史批次条目保留，不作为新的部署授权。
 
 ## 用户原文
 
@@ -74,6 +74,8 @@ C. 所有业务数据只存数据库/对象存储，不落本地文件；本地�
 
 MLX 性能专项新增可选隔离入口 `scripts/benchmark_mlx.py`，严格参数/真实运行记录见 `MLX_PERFORMANCE.md`。只用现有已校验模型和全新合成数据目录；不把性能实验并入日常 CI 下载模型。
 
+2.0 新增 `tests/test_mlx2_engine.py` 与 Apple Silicon 数值回归 `tests/test_mlx2_vision.py`。后者在带精确 MLX/MLX-VLM 版本和可选 PyTorch 的独立验证环境执行 `.venv/bin/python -m pytest -q tests/test_mlx2_vision.py`（按实际环境路径替换解释器）；PyTorch 不打入 Mac App。非 Mac CI 会跳过该模块，必须另留真实 Mac 数值和 OCR 证据，不能以跳过当通过。详细版本、直接 OCR 和浏览器证据见 UNLIMITED_OCR2_VALIDATION.md。
+
 以下入口可在源码核对；具体执行结果见 `MODEL_DOWNLOAD_VALIDATION.md`，不以列出命令代替测试。均在项目根目录执行。
 
 | 命令 | 来源及范围 |
@@ -125,6 +127,7 @@ Windows 的真实安装、杀毒软件扫描、首次下载、真实 OCR、退�
 - 本机候选更新与数据保全记录：`LOCAL_PREVIEW_UPDATE.md`，区分更新计划、实际部署及验收结果。
 - 当前候选分发：`RELEASE_CANDIDATE_v1.3.0-rc.2.md`、`RC2_VALIDATION.md`；含实际来源、包哈希、原生/公开验证边界，不替代正式验收。
 - MLX 无损调度研究与性能/输出一致性、浏览器、部署状态：`MLX_PERFORMANCE.md`。
+- Unlimited-OCR 2.0 Mac 本机预览的来源、数值/真实 OCR、安装状态、数据保全与回退：`UNLIMITED_OCR2_VALIDATION.md`。
 - DeepSeek 交接入口：`START_HERE-DEEPSEEK.md`；技术说明及有验收条件的工单：`handoff/DEEPSEEK_HANDOFF.md`、`handoff/WORK_ORDERS.md`。接手默认只做 DS-00，不延续历史单次部署授权。
 
 ### 回滚方式
@@ -186,10 +189,23 @@ Windows 的真实安装、杀毒软件扫描、首次下载、真实 OCR、退�
 
 本次不涉及：Windows 目标机、公开 Release、正式版、模型下载逻辑、数据库或业务数据迁移。
 
+### 本次 Unlimited-OCR 2.0 范围（2026-10-27）
+
+用户要求把现有墨析 1.0 换成 2.0，并明确确认：
+
+1. Mac 先使用保持原精度的 BF16 版做隔离验证，通过后更新本机；保留 1.0 回退，暂不发布新安装包。授权时 MLX 适配尚未合并；现已核对上游 PR #2601 合并，但仍固定已审查提交，不自动追随更新。
+2. 用户已保存编辑，允许模型下载完成后正常退出墨析进行隔离验收，之后按既有备份/漂移/PR/CI/合并门禁更新。
+3. 用户同意新 2.0 结果的去重保留编号、金额等数字差异，补回归测试；仍保留生成死循环保护和完整原始输出，阅读器采用同一规则。不修改现有扫描结果、不批量清洗旧数据。
+
+模型固定为 `mlx-community/Unlimited-OCR-2-bf16` 修订 `850d1e483f5a82a0597f0a45aac31b07ba840df2`，下载/校验独立目录 `models/Unlimited-OCR-2-bf16/`。旧应用管理目录与 LM Studio 的 1.0 权重均原位保留。Windows 仍使用现有 1.0 路线；不操作远端设备、不新发公开候选/正式版，既有 CI Windows 测试 artifact 不等于发行。
+
+验证只用合成图/PDF和独立数据/support目录，明确选择本机 MLX，不调用用户远程模型或复制接口密钥。先确认4个旧任务终态并正常退出，再保存旧 App、数据/两处旧模型的 hash/权限清单。合并后从干净源码构建，先原生隔离验收，再按 DEPLOYMENT 的原部署器更新；安装后仅正常首页只读检查，不打开历史阅读器或重扫。任一门禁失败则停止或 App-only 回退，不能修业务数据来掩盖。
+
 ## 变更执行记录
 
 | 日期 | 变更内容 | review 结论 | 文档更新 | commit | 部署 | 验证证据 | 回滚方式 |
 | --- | --- | --- | --- | --- | --- | --- | --- |
+| 2026-10-27 | Mac 2.0 BF16 适配、固定下载/运行时、数字安全去重与原始输出保留（准备阶段） | 独立对抗 review 的视觉数值、重复误删、修复续传、中断/部分结果与基准溯源问题均修复；代码末轮P0/P1/P2=0；文档/实包后续复核 | README/CHANGELOG/DEPLOYMENT/THIRD_PARTY_NOTICES；新增UNLIMITED_OCR2_VALIDATION；本文件当前状态、测试、文档路径、授权范围及本行 | feat/unlimited-ocr-2-mac；具体提交/合并另随PR和最终回执记录 | 尚未替换旧App；仅正常退出并运行隔离合成验收；不发安装器/Release | 178 Python、lint、构建11 Node；六图OCR、浏览器三页PDF/120记录/搜索/深色表格/完整ZIP/卸载/外部Origin403通过；实际安装另验 | 原部署器App-only回退；旧1.0模型和历史数据不变；源码revert PR，详细审计见验证记录 |
 | 2026-10-23 | 完成本机源码迁至 ~/cpcsoft/OCR；精确修复8个本机venv路径，回填证据 | 独立review两项P2（pymupdf漏项、审计根条目/权限）均关闭；最终证据/截图/ZIP及保护条目独立复算末轮P0/P1/P2=0 | PATH_MIGRATION实际验收；AGENTS/CHANGELOG/DEPLOYMENT/技术交接；本文件当前目录/本行 | 实测源PR #13合并6cb53be3b00fe9c517a23107e7b2ebd1d29e2e53；文档f13f2ef；本行后续证据PR不改实测源 | 仅迁移开发目录，重建源码网页并临时启停隔离服务；无App安装/重启、模型迁移或新发行 | 112696条目移动零差异；保护70091/旧dist3316条目零差异；68 Python/lint/构建11 Node；真实选TXT/阅读/ZIP/403/关闭断连/端口释放通过；App清单签名未变；PR/main CI成功，证据见PATH_MIGRATION | 保留 ~/cpcsoft/.ocr-migration-20261023 的8原件/全树清单/dist-before；无新写入时恢复环境并移回旧根；文档revert PR，不动安装版数据 |
 | 2026-10-23 | 准备将本机源码迁至 ~/cpcsoft/OCR，更新维护/交接路径；实际迁移以最终回执为准 | 方案漏列 pymupdf shebang 的 P2 已关闭；8文档及本机审计脚本独立末轮 P0/P1/P2=0 | 新增 PATH_MIGRATION；AGENTS/README/CHANGELOG/DEPLOYMENT/DeepSeek 入口及技术交接；本文件目录/文档路径/范围/本行 | 主题分支 chore/relocate-workspace；准确提交/合并 SHA 由本次 PR 及迁移回执记录 | 准备阶段未移动；仅源码目录迁移，无 App/模型/Release 更新 | 本机68 Python（5旧SWIG告警）、lint、8文档46本地链接和diff检查通过；PR/main CI、迁移全树核对与隔离浏览器结果另留证 | 保留8文件原件和全树清单，核对无新写入后移回旧根；文档修正/revert PR，不动安装版数据 |
 | 2026-10-22 | Apple Silicon MLX 闲置缓存软阈值回收；权重与生成算法不变 | 独立代码/基准/网页证据/文档末轮P0/P1/P2=0；实验工具3项P2、CI编码、最终计时表述P2已修复复核 | 本文件专项测试/文档路径/优化范围/本行；README、CHANGELOG、DEPLOYMENT；新增 MLX_PERFORMANCE 实测/源码溯源/真实浏览器章节 | 优化 d501ffde54f6d7c07dfd8a3e84be8142048b7183；编码 d23aa16033aa0a602d2977fab23fe647ebc11ec0；PR #11 合并352665be7f147474af1cf93f522958e3972cb052；2026-10-23交接复核最终PR/main CI成功 | 未部署/未重启现安装 App，不发布新包；只启动并退出隔离源码前后端 | 本机68 Python、lint、构建+11 Node；最终PR CI39843033560/main CI39843742424 Linux/Windows通过；五图20次10对完整输出相同，本次累计耗时减少38.16%/峰值不变；真实批量选图/OCR/阅读/ZIP/自动卸载、403及退出释放通过，临时合成任务已可恢复清理，详见MLX_PERFORMANCE | 未部署无需App回滚；源码revert PR，未来安装使用独立previous.app审计备份，不动业务数据 |

@@ -19,6 +19,10 @@ fetch_verified() {
 
 fetch_verified "$python_url" "$cache/python.tar.gz" "$python_sha"
 fetch_verified "$node_url" "$cache/node.tar.gz" "$node_sha"
+vlm_revision="c3ae82e2e79ee553c534c7b4efea73bc85122ab2"
+vlm_source="$cache/mlx-vlm-$vlm_revision.zip"
+fetch_verified "https://codeload.github.com/shuuul/mlx-vlm/zip/$vlm_revision" "$vlm_source" \
+  "b4b96b728fc617592965d656b72b90311c0491806bf83a97926732fa79828eec"
 if [[ ! -x "$cache/node-v22.23.2-darwin-arm64/bin/node" ]]; then
   tar -xzf "$cache/node.tar.gz" -C "$cache"
 fi
@@ -31,13 +35,20 @@ if [[ ! -x "$environment/python/bin/python3" ]]; then
   tar -xzf "$cache/python.tar.gz" -C "$environment"
 fi
 if [[ ! -f "$environment/ready" ]]; then
+  # Build the reviewed adapter, never a floating branch or remote model Python.
+  "$environment/python/bin/python3" -I -m pip install --only-binary=:all: \
+    'setuptools==80.9.0' 'wheel==0.45.1' 'packaging==26.3'
+  "$environment/python/bin/python3" -I -m pip wheel --no-deps --no-build-isolation \
+    --wheel-dir "$environment/wheels" "$vlm_source"
+  vlm_wheel="$environment/wheels/mlx_vlm-0.7.11-py3-none-any.whl"
+  [[ -f "$vlm_wheel" ]] || { echo "缺少固定版本的 MLX 2.0 适配 wheel" >&2; exit 1; }
   # Resolve wheels for the advertised minimum OS, not for the newer build host.
   "$environment/python/bin/python3" -I -m pip download --only-binary=:all: \
     --platform macosx_14_0_arm64 --dest "$environment/wheels" \
-    -r "$project_dir/mac-app/requirements-runtime.txt"
+    -r "$project_dir/mac-app/requirements-runtime.txt" "$vlm_wheel"
   "$environment/python/bin/python3" -I -m pip install --no-index --find-links "$environment/wheels" \
-    --only-binary=:all: --no-compile -r "$project_dir/mac-app/requirements-runtime.txt"
-  "$environment/python/bin/python3" -I -c 'import mlx.core, transformers, fastapi, fitz, PIL, safetensors'
+    --only-binary=:all: --no-compile -r "$project_dir/mac-app/requirements-runtime.txt" "$vlm_wheel"
+  "$environment/python/bin/python3" -I -c 'import mlx.core, mlx_vlm, transformers, fastapi, fitz, PIL, safetensors'
   touch "$environment/ready"
 fi
-"$environment/python/bin/python3" -I -c 'import mlx.core, transformers, fastapi, fitz, PIL, safetensors; print("Portable MLX runtime imports OK")'
+"$environment/python/bin/python3" -I -c 'import mlx.core, mlx_vlm, transformers, fastapi, fitz, PIL, safetensors; print("Portable MLX v2 runtime imports OK")'
