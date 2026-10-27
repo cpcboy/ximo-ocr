@@ -6,10 +6,12 @@ Linux/Windows CI skips this gate; a Mac deployment requires it to pass locally.
 """
 from types import SimpleNamespace
 
-import numpy as np
 import pytest
 
 mx = pytest.importorskip('mlx.core')
+# Non-Mac CI has neither MLX nor NumPy: apply the MLX gate before optional
+# numerical-reference imports. A real Mac acceptance must run all 14 tests.
+import numpy as np
 torch = pytest.importorskip('torch')
 pytest.importorskip('mlx_vlm')
 

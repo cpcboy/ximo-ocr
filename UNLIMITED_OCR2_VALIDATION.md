@@ -62,6 +62,8 @@ portable运行时在离线模式完成六张图：英文段落、表格、布局
 
 直接六图记录在最后“完整重复周期”收紧前生成，已含数字保留修正；**最终代码另经真实浏览器重新OCR**：系统选择文件入口同时选3页合成PDF与120条小字PNG，共4页完成。英文、中文、表格金额/双列顺序正确，120条完整；阅读器搜索`Entry 120`得1个匹配；深色主题表格可读。无需重复扫描旧用户文件。
 
+提交`180c920701b461c572d266a342e9dc1c2abc66ad`后又独立复跑最终代码六图，`work/realocr-final/report.json`记录源码/脚本hash：6图全部通过、dense逐条120项匹配，正文及完整原始输出与上一轮逐字一致。耗时9.16/2.50/2.64/1.66/9.61/47.01秒，峰值约8.79GB；卸载active1244/cache0/loaded=false。计时波动说明不能承诺固定提速。该直接进程退出没有出现信号量警告；仍保留源码服务退出的警告记录。
+
 浏览器真实点击完整结果包下载，两ZIP的CRC与JSON字段验证通过，均保留model_id/raw_model_output，dense清洁/阅读有效文本和原始输出全部包含120条。无browser warn/error。任务全部完成自动卸载；关闭页面后`/api/client/status`为connected=false。外部Origin的下载POST被403拒绝；未放宽安全策略。临时服务正常停止，下载的两个合成ZIP移入私有证据目录，不留在Downloads。
 
 源码后端在停止后出现1条Python `resource_tracker` 的信号量清理告警（1 semaphore）；前端/后端无Traceback、ERROR或5xx，监听与进程均退出。不能据此宣称日志零告警；后续原生退出须复查，若有残留进程/模型或功能失败则阻断更新。当前未证实该告警的具体上游根因，不通过屏蔽告警“修复”。
@@ -78,6 +80,8 @@ portable运行时在离线模式完成六张图：英文段落、表格、布局
 耐久审计根`~/cpcsoft/OCR/.maintenance-backups/2026-10-27-uocr2/`（0700）已有`installed-before.json`和`data-model-before.json`。旧App与上次部署清单逐项一致；data389、managed1.0 14、LM Studio1.0 7条目（含目录/权限/类型），实际更新后还须再次逐项核对，不用数量相同代替内容保全。
 
 ## 尚待执行的门禁
+
+PR为[#17](https://github.com/cpcboy/ximo-ocr/pull/17)。首轮CI40548974108在Linux/Windows收集Mac可选数值测试时失败：NumPy在MLX跳过判断前导入。最小修正把NumPy导入放到MLX判断后，Mac14项数值门禁复跑通过；不改变容差、不安装无关AI依赖到非Mac CI。后续CI重跑成功前不合并，首次失败保留审计。
 
 1. 文档独立review、PR/CI/合并，记录真实提交/合并SHA。
 2. 干净合并源构建MacApp；新App原生窗口、系统选文件、OCR、阅读、ZIP系统保存框与退出验证。
