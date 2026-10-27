@@ -222,5 +222,3 @@ class LegacyMLXEngine:
                 "模型已从内存卸载，将在下次任务时自动加载",
                 busy=False,
             )
-
-
