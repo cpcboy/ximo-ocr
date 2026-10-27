@@ -1,12 +1,12 @@
 # Unlimited-OCR 2.0：Mac 本机预览升级记录
 
-日期：2026-10-27。阶段：代码与隔离源码验证通过，准备 PR；**尚未完成合并、原生候选验收或替换已安装 App**。本文件将通过后续证据 PR 回填实际执行，不提前宣称交付。
+日期：2026-10-27。阶段：**本机已备份更新为 1.3.0(8)，2.0 BF16 模型已安装，授权范围内的源码/原生候选/安装版用户路径和数据保全验证通过**。实际 App 来源为 PR #17 合并 `cfb7c929266fe43c352ae9aadf84b021d675010b`。本文件是后续证据补充，不改变包内来源；未发布新安装器或 Release，Windows 未升级。退出日志的两项非阻断观察和未验范围见下文，不能据此宣称正式版或全数据集质量验收完成。
 
 ## 需求、授权与保护范围
 
 用户要求用 2.0 替换现有 1.0；确认保持 BF16 精度，先隔离验证，通过后备份更新本机，保留 1.0；暂不发布新的安装器。另确认已保存编辑、允许正常退出，以及新2.0 OCR/阅读器去重保留数字差异、保留死循环保护和原始输出、不修改旧扫描。
 
-旧 App：`/Applications/墨析 OCR 工作台.app`，1.3.0(7)，源 `afc73d5685192193fddf9e843f4034a35487c55d`。用户任务4条均终态；正常退出后建立稳定基线。生产数据、模型、API配置未用于测试。Windows 引擎与现有公开 `v1.3.0-rc.2` 均不升级，不把 CI artifact 当作新发行。
+升级前 App：`/Applications/墨析 OCR 工作台.app`，1.3.0(7)，源 `afc73d5685192193fddf9e843f4034a35487c55d`。用户任务4条均终态；正常退出后建立稳定基线。历史扫描、1.0 模型和 API 配置未用于测试；安装版的合成 OCR 使用新正式目录中的 2.0 权重。Windows 引擎与现有公开 `v1.3.0-rc.2` 均不升级，不把 CI artifact 当作新发行。
 
 ## 固定来源与运行时
 
@@ -77,19 +77,50 @@ portable运行时在离线模式完成六张图：英文段落、表格、布局
 
 本次worktree为`~/cpcsoft/OCR/work/uocr2-upgrade/`。其中`work/`保留python-tests/frontend-tests/frontend-lint/vision-parity/portable-runtime/model-verification日志、`realocr/report.json`及原始输出、`ui-backend-current.log`/`ui-frontend.log`、`evidence/browser-exports.json`与ZIP/截图。截图`browser-table.png`、`browser-reader-dark.png`、`browser-dense-search.png`。
 
-耐久审计根`~/cpcsoft/OCR/.maintenance-backups/2026-10-27-uocr2/`（0700）已有`installed-before.json`和`data-model-before.json`。旧App与上次部署清单逐项一致；data389、managed1.0 14、LM Studio1.0 7条目（含目录/权限/类型），实际更新后还须再次逐项核对，不用数量相同代替内容保全。
+耐久审计根`~/cpcsoft/OCR/.maintenance-backups/2026-10-27-uocr2/`（0700）保存`installed-before.json`、`data-model-before.json`、`data-model-after.json`、`model-install.json`及`installed-verification.json`，另归档测试脚本、源/原生日志、合成ZIP和截图。旧App与上次部署清单逐项一致；安装与正常启动退出后，data389、managed1.0 14、LM Studio1.0 7条目（含目录/权限/类型）逐项内容、类型和权限完全相同，不是仅比较数量。私有证据不提交 Git、不装进 App，也不作为普通缓存清理。
 
-## 尚待执行的门禁
+## 合并、构建与实际部署
 
-PR为[#17](https://github.com/cpcboy/ximo-ocr/pull/17)。首轮CI40548974108在Linux收集Mac可选数值测试时失败：NumPy在MLX跳过判断前导入；同批Windows被矩阵fail-fast取消，并非已证明Windows相同报错。最小修正把NumPy导入放到MLX判断后，Mac14项数值门禁复跑通过；不改变容差、不安装无关AI依赖到非Mac CI。后续CI重跑成功前不合并，首次失败保留审计。
+PR为[#17](https://github.com/cpcboy/ximo-ocr/pull/17)，已合并为`cfb7c929266fe43c352ae9aadf84b021d675010b`。首轮CI40548974108在Linux收集Mac可选数值测试时失败：NumPy在MLX跳过判断前导入；同批Windows被矩阵fail-fast取消，并非已证明Windows相同报错。最小修正把NumPy导入放到MLX判断后，Mac14项数值门禁复跑通过；不改变容差、不安装无关AI依赖到非Mac CI。首次失败保留审计。
 
-1. 文档独立review、PR/CI/合并，记录真实提交/合并SHA。
-2. 干净合并源构建MacApp；新App原生窗口、系统选文件、OCR、阅读、ZIP系统保存框与退出验证。
-3. 新模型清单独立复制/校验到App管理目录，原部署器备份旧App并更新；正常首页只读检查与隔离安装版实测。
-4. 安装后数据/旧模型hash/权限全量复核、日志与进程核对，证据文档另PR回填。
+- 最终[PR CI 40549479921](https://github.com/cpcboy/ximo-ocr/actions/runs/40549479921)与[main CI 40550374203](https://github.com/cpcboy/ximo-ocr/actions/runs/40550374203)的 Linux/Windows 均成功：每平台162 Python passed、3 skipped、6 warnings；11 Node通过。Windows额外2项NSIS测试及测试安装器构建通过；只是CI artifact，未新发安装器，也不是Windows2.0实机验收。
+- 从干净`HEAD == origin/main == cfb7c929...`构建网页及Mac App，合并源本机178 Python再次通过。严格签名校验通过，包内`SOURCE_COMMIT`与合并SHA一致，版本1.3.0(8)，清单20602项。包中含固定MLX适配及MIT许可，不含权重、用户数据或测试用PyTorch。未经修改的候选完成下面原生路径，清单仍相同。
+- 模型只添加到`~/Library/Application Support/墨析 OCR 工作台/models/Unlimited-OCR-2-bf16/`。审计脚本先以pending状态落盘，再逐文件复制/哈希/完整收据校验，原子改名后更新completed记录；11文件、6,690,229,659字节，不复制缓存、临时分片或模型Python。两处1.0目录保持原样。
+- 安装前再次核对旧App10424项与原基线、数据/旧模型全部条目、端口空闲及候选来源；原`scripts/deploy_macos.py`备份旧App后安装。`install-v2/previous.app`保留1.3.0(7)，`install-v2/deployment.json`和`installed-manifest.json`保留操作记录与新20602项清单。
+- 安装后严格签名、App清单/来源、新模型11文件全量哈希/收据再次通过。正常启动看到原4条任务；只查首页和模型信息，未打开旧阅读器、重扫或变更接口配置。退出后`data-model-after.json`与before完全相同。最终检查时间为2026-10-27 17:46 UTC。
+
+## 真实原生验收与退出状态
+
+两轮均用系统文件选择框和系统保存框，不以HTTP成功代替原生路径。`OCR_STUDIO_SUPPORT_DIR`/`OCR_STUDIO_DATA_DIR`仅对隔离测试进程设置，未改全局环境。候选用隔离模型；安装版用新正式模型目录，业务任务仍全部保留在原目录。
+
+| 范围 | 真实操作与结果 |
+| --- | --- |
+| 干净合并源候选 | 在`work/native-candidate/`选3页合成PDF，3页完成（209/102/555字），深色表格可读，完整包从系统保存框导出；model_id/raw/完整状态均正确；自动卸载，正常退出 |
+| `/Applications`安装版 | 在`work/native-installed/`选120条小字PNG；完成5349字/57.5秒，逐条核对编号、ID和数量全部保留；阅读器搜`Entry 120`为1匹配；完整包系统保存成功；显示2.0 BF16权重/组件就绪、内存未载入、自动释放开启 |
+| 普通启动（无隔离环境） | 首页原4个任务仍在，系统状态识别新正式2.0目录并就绪；未打开历史任务；正常退出后数据及两处旧模型逐项不变 |
+
+| 原生导出 | SHA-256 |
+| --- | --- |
+| native-candidate-完整结果.zip | 6c4bf8088db42ee3a3178c046da805ee41f6efcc6b2c18697cc47991edbc5bb8 |
+| native-installed-完整结果.zip | 012a5a6bd688a8b2584262a369174a7bc904b2ce870bea2699cc78255e4eaabf |
+
+两包CRC通过，所有页有`model_id`和`raw_model_output`，无partial/截断/页错误；安装版清洁正文、阅读有效正文、原始输出均保留120条完整记录。截图为审计根的`native-candidate-reader.png`、`native-candidate-model-ready.png`、`native-installed-search.png`、`native-installed-model-ready.png`；仅展示合成内容。
+
+退出证据：候选后端/前端PID7126/7132、安装版隔离9214/9220、普通启动App/后端/前端11846/11853/11862均消失，3000/18765端口关闭。两轮OCR后均自动卸载；日志有正常shutdown。原生测试前后端未检出Traceback/ERROR/HTTP5xx；普通启动日志无OCR提交。最终保持App已退出、模型不占用推理内存，用户可正常从“应用程序”再次打开。
+
+### 非阻断观察（未修复，P2）
+
+1. OCR服务退出复现Python `resource_tracker` 的1 semaphore清理警告。已经确认本次进程/监听退出、任务后模型卸载，但没有证实具体根因或证明所有资源无泄漏；不屏蔽警告、不标为根因已解决。
+2. 原生控制台仍有`sandbox_extension_issue_file failed for : 2 (No such file or directory)`。本轮系统选文件、OCR、阅读、导出保存均成功；仅能说明没有阻断本次路径，不能推断诊断已修复。
+
+候选独立review允许继续已授权的本机预览安装。安装后的独立最终复核再次确认App/备份清单与签名、模型11文件固定哈希、前后数据清单、真实截图/ZIP/退出证据及五份文档一致：**P0=0、P1=0、新增文档P2=0，上述既有P2观察2项保留**。任何未来新增关键路径/保全失败仍须停止并回退，不得把这次结论当作后续变更的自动放行。
+
+证据文档补充复跑本机178 Python（6条依赖告警）与lint通过，5份文档37个本地链接及diff检查通过；文档经独立review后单独PR/CI/合并，不再构建或安装App。对应文档PR记录与提交历史是证据补充的准确来源，不能代替App的`cfb7c929...`。
+
+## 未验范围
 
 不涵盖：Windows2.0、干净新Mac/最低macOS14实机、169页教材/任意复杂扫描全量质量、正式基准、不同行为参数速度比较、跨页联合DASH、商业签名/公证。2.0仍可能漏字/幻觉，应对照原图校对；原始输出保留并不保证正确。
 
 ## 回退
 
-按 [DEPLOYMENT.md](DEPLOYMENT.md) 的本批次章节：正常退出后，用原部署器`rollback`恢复`install-v2/previous.app`，以本次`installed-manifest.json`核对现版本，使用全新的`rollback-v2/`保护失败候选。旧1.0路径原样保留，App回退即可继续使用，不覆盖任何扫描/笔记/API设置。源码只用revert PR，不强推或重置main。当前尚未安装，无需执行回滚；备份路径在实际部署后才算可用。
+按 [DEPLOYMENT.md](DEPLOYMENT.md) 的本批次章节：正常退出后，用原部署器`rollback`恢复`install-v2/previous.app`，以本次`installed-manifest.json`核对现版本，使用全新的`rollback-v2/`保护失败候选。旧1.0路径原样保留，App回退即可继续使用，不覆盖任何扫描/笔记/API设置。源码只用revert PR，不强推或重置main。本次备份10424项已复核与旧基线一致、签名通过；未执行回退。新2.0权重可保留，不自动删除；不要复用已存在的安装/回退审计目录。
