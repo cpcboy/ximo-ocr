@@ -1,6 +1,6 @@
 # 2026-10-28 本机 rc.3 候选更新
 
-状态：准备阶段，尚未替换本机 App。用户另授权备份旧版、保留全部扫描和模型数据后更新并验证；仅本机候选试用，不发正式版或新的安装包。准确执行结果将独立 review 后经后续证据 PR 回填，不能用本方案代替已验收。
+状态（2026-10-29）：**首次原生 OCR 出现 Metal GPU Timeout，P1 未关闭，本机安装暂停。**独立备份、重建与包核验已完成，同参数新进程复测成功仅说明未复现；本机仍 build8，从未被替换。用户另授权备份旧版、保留全部扫描和模型数据后更新并验证；仅本机候选试用，不发正式版或新的安装包。下方计划不是已完成安装证明，实际证据见末节。
 
 ## 来源与最小改动
 
@@ -8,7 +8,7 @@
 - 公开 rc.3 为 1.3.0(9)，tag/DMG源 `ee808f671712e8795c89a4d4f1c1d3f6d6287115`（PR #19）。其后到 `455d4e93fe6d2891ce9bb5a57523a9a6c3b35487` 只有6份文档变更；本批也仅改5份文档，不改模型/运行库/OCR/部署代码。
 - 部署器要求干净 `HEAD == origin/main == candidate SOURCE_COMMIT`。本次文档 PR review、双平台 CI、合并及 main CI成功后，按既有流程重建同一 rc.3 应用代码，记录新实际 SHA。公开 tag、DMG、校验值和预览标识不改，本机重建 App 不宣称二进制与公开包完全相同。
 - 使用 `~/cpcsoft/OCR/work/uocr2-upgrade/` 干净跟踪树；根目录用户 `.workbuddy/` 不读取、不修改、不提交。既有 worktree 的 ignored 构建、运行时、模型及审计保留。
-- 微信文章正文未能安全读取；新模型名/来源未知，待用户补充，不以另一模型冒充、不开启外部推理、不绕过安全策略。
+- 原微信链接未能安全读取；用户后提供 PDF，已核对为 MiniCPM-OCR 1.0 和 Jev。两款一起接入及 Mac 本机非量化隔离验证已获确认；低分最多追加 3 次自动识别，具体阈值及结束决策仍需确定。新增接入另走一轮实现/review/PR/CI/合并和验收，不更换默认引擎，不绕过当前安装阻断。
 
 ## 门禁与操作
 
@@ -55,4 +55,38 @@ build/validation-venv/bin/python scripts/deploy_macos.py rollback \
 2026-10-29 继续执行：现装仍 build8，3000/18765 无监听；独立 4173 离线阅读器不属于本次更新，不终止。当前磁盘实际可用约85 GiB。
 
 - 前次回归曾有172通过/6失败，后续遭遇ENOSPC；保留为历史失败，未据此安装或跳过门禁。本轮未修改代码，重新运行同一验证环境得到 **178 Python通过（6条弃用告警）**、lint通过、正式前端构建及 **12 Node测试通过**。复跑通过不等于已证实前次全部失败的根因。
-- 准备方案和私有审计脚本已独立对抗review，新增P0/P1/P2=0；所列三类既有退出诊断不清零。App备份、PR/CI、重建、安装及原生验收尚未完成，后续证据逐项回填，不沿用旧验收宣称通过。
+- 准备方案和私有审计脚本已独立对抗review，新增P0/P1/P2=0；所列三类既有退出诊断不清零。后续执行如下，不沿用旧验收宣称本次通过。
+
+## 2026-10-29 实际执行与阻断
+
+### 已完成的准备与备份
+
+- 准备提交 `ba12f5eeb4f3bc4a5ce22f1df3cd3ce05dc51675`，PR [#21](https://github.com/cpcboy/ximo-ocr/pull/21) 于 10:38:12Z 合并，实际候选源 `0b691375c439db1c1f0ce4b940a658221c16d983`。PR CI [40858431523](https://github.com/cpcboy/ximo-ocr/actions/runs/40858431523)、main CI [40859127611](https://github.com/cpcboy/ximo-ocr/actions/runs/40859127611) 的 Linux/Windows 均成功。
+- 审计根 `.maintenance-backups/2026-10-28-local-rc3/` 已建为私有目录。`preflight/build8.app` 独立复制旧安装版，`prebuild/rc3-published.app` 原子归档旧构建；二者清单和严格签名通过，旧构建另与只读挂载公开 DMG 比对。公开 DMG、tag、Release 没有修改。
+- 从 clean main 执行原 `mac-app/build-app.sh` 重建 build9。20602 项清单、前端来源、后端 Git 内容、严格 ad-hoc 签名通过；运行库与已归档 rc.3 完全一致，未新增权重、用户数据或凭据。候选前端摘要 `117c18693e0900cd84911bf6c3c3976bb58b7866f2a08a1807fb32e53a34de7a`。尚无 Developer ID 公证。
+
+### 首次失败与一次有界复测
+
+| 项目 | 首次候选 | 新进程复测 |
+| --- | --- | --- |
+| 独立 support | `work/local-rc3/native-candidate` | `work/local-rc3/native-retest` |
+| 合成任务 | `4ba765f8fada422396c59bd8ec77116c` | `91eeaee29d7a43bd87380200f8f7a2df` |
+| 原生系统选文件 | 同一合成三页 PDF | 同一 PDF |
+| OCR | 第1页17.34秒后 GPU Timeout，后2页完成，任务 partial | 3页 completed，第一页12.2秒 |
+| 真实路径 | 失败界面/错误现场保留，没有记为通过 | 阅读第三页表格、系统保存完整ZIP、自动卸载、正常退出通过 |
+| 判定 | 新增 P1，停止安装 | 仅未复现；P1和安装阻断仍保留 |
+
+两次输入 SHA-256 均为 `b6432bb9daa04226e3dbe224a80fd97455d5c06151aec8da995e758cf67ecb99`。options 完全相同：precision、160 DPI、max_length 8192、默认 prompt；使用同一已校验 BF16 权重、候选源和运行库，没有降低精度、分辨率、上下文或关闭系统保护来求通过。
+
+首次异常定位至 `MLX2Engine.scan → stream_generate → generate_step → mx.async_eval`：`[METAL] Command buffer execution failed: Caused GPU Timeout Error (00000002:kIOGPUCommandBufferCallbackErrorTimeout)`。两页随后成功不能抵消第一页失败。只读 OS GPU 日志查询未返回进一步证据；观察到其他系统进程负载，但没有因果证据，不将其断言为根因，也未终止其他程序。独立 review 确认这是 OCR 关键路径 P1，不是上传或导出故障。
+
+复测 ZIP 为 `evidence/retest-complete.zip`，284296 字节，SHA-256 `21772a44975a269e4a28576d0b7217796969315df9df89f6ec7da42b767cf537`。CRC、全部成员、源文件字节、3页预览、JSON/MD/TXT与当前合成任务一致，页码唯一有序、各页标记/raw/text完整、无截断。复测后台无 Traceback/ERROR/5xx，仍有既有信号量和 sandbox 退出诊断；不声称零告警。该次不是完整安装版验收，未执行120条安装后测试或正常数据启动。
+
+### 保全结果、证据与后续门禁
+
+- 11:05:44Z 完整复查：已装 App 仍为 build8 / `cfb7c929266fe43c352ae9aadf84b021d675010b`，20602项及签名未变；候选与两份旧App备份未漂移。
+- 历史11任务仍为9 completed、1 canceled、1 failed。`data`502、managed1.0模型14、LM Studio1.0模型7、managed2.0模型13项的内容/类型/权限与本次基线一致。未复制接口密钥、未打开旧阅读器、未重新下载或更换生产模型。
+- 两次均正常退出；3000/18765及相应后端进程已停止。4173独立离线阅读器未干预。`install-rc3`不存在，部署未发生，无需回滚；旧App独立备份保留供后续使用。
+- 私有审计证据：`preflight.json`、`candidate-verification.json`、`before-candidate.json`、`retest-native-verification.json`、`after-retest.json`、两次console日志及两隔离support的日志/任务。截图 `evidence/candidate-gpu-timeout.png`、`evidence/retest-three-pages.png`。这些文件不提交 Git 或安装包。
+- 独立 review 修正了验包/ZIP绑定的4项P2，后续脚本复核无新增问题；实际 OCR 超时 **P1=1 未关闭**。文档回填不放行部署。后续须定位或通过明确、经审查的修复重新执行真实关键路径；不能凭单次复测成功或 CI 成功直接安装。
+- 此后 main若有新提交，当前候选不再满足 `SOURCE_COMMIT == HEAD == origin/main`。继续安装前必须归档当前候选、从最新干净合并源重建并复验，不改写SOURCE_COMMIT、不用rollback方式安装新版本。原有回滚命令只在真正执行新安装后使用，不能对尚不存在的 `install-rc3` 运行。
